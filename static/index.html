@@ -6,646 +6,888 @@
 <title>ResiQuant — Submission Extractor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-/* ── Reset & Base ─────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg:          #0d0d0d;
-  --surface:     #141414;
-  --surface2:    #1a1a1a;
-  --border:      rgba(255,255,255,0.08);
-  --border-hover:rgba(255,255,255,0.16);
-  --accent:      #0099ff;
-  --accent-dim:  rgba(0,153,255,0.12);
-  --accent-glow: rgba(0,153,255,0.25);
-  --green:       #83ca16;
-  --green-dim:   rgba(131,202,22,0.12);
-  --red:         #fa4c59;
-  --red-dim:     rgba(250,76,89,0.12);
-  --amber:       #f5a623;
-  --amber-dim:   rgba(245,166,35,0.12);
-  --text:        #f0f0f0;
-  --text-2:      #a0a0a0;
-  --text-3:      #606060;
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
-  --font-body:   'Inter', sans-serif;
-  --font-display:'DM Sans', sans-serif;
+/* ── PP Neue Montreal fallback stack ───────────────────────────────────── */
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: local('PP Neue Montreal Medium'), local('PPNeueMontreal-Medium');
+  font-weight: 500;
+  font-style: normal;
 }
-html { font-size: 15px; -webkit-font-smoothing: antialiased; }
-body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
-a { color: inherit; text-decoration: none; }
 
-/* ── Scrollbar ────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+/* ── Design tokens (exact ResiQuant palette) ───────────────────────────── */
+:root {
+  /* backgrounds */
+  --bg:           #0c0c0c;
+  --surface:      #111111;
+  --surface-2:    #161616;
+  --surface-3:    #1c1c1c;
 
-/* ── Nav ──────────────────────────────────────────────────────────── */
+  /* borders */
+  --border:       rgba(255,255,255,0.06);
+  --border-mid:   rgba(255,255,255,0.1);
+  --border-high:  rgba(255,255,255,0.18);
+
+  /* brand green (from their site) */
+  --green:        #83ca16;
+  --green-dim:    rgba(131,202,22,0.08);
+  --green-border: rgba(131,202,22,0.22);
+
+  /* status */
+  --red:          #f04141;
+  --amber:        #e8a020;
+
+  /* text */
+  --text:         #f2f2f2;
+  --text-2:       #888888;  /* their #666 on dark */
+  --text-3:       #444444;
+
+  /* radius */
+  --r-xs:  4px;
+  --r-sm:  6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+
+  /* typography — PP Neue Montreal spec */
+  --font:    'PP Neue Montreal', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --fw:      500;
+  --lh:      1.3;
+  --ls:      0.014em;         /* 0.21px at 15px */
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  font-size: 18px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+@media (max-width: 489px) { html { font-size: 16px; } }
+
+body {
+  font-family: var(--font);
+  font-weight: var(--fw);
+  font-style: normal;
+  line-height: var(--lh);
+  letter-spacing: var(--ls);
+  font-feature-settings: "blwf" 1, "cv09" 1, "cv03" 1, "cv04" 1, "cv11" 1;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+/* ── Nav ───────────────────────────────────────────────────────────────── */
 nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: 56px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 54px;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 32px;
-  background: rgba(13,13,13,0.85);
-  backdrop-filter: blur(20px);
+  padding: 0 28px;
+  background: rgba(12,12,12,0.85);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-bottom: 1px solid var(--border);
 }
-.nav-logo { display: flex; align-items: center; gap: 10px; }
-.nav-logo-mark {
-  width: 28px; height: 28px; border-radius: 7px;
-  background: var(--accent); display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 600; font-size: 13px; color: #fff; letter-spacing: -0.5px;
-}
-.nav-logo-text { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
-.nav-badge {
-  font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px;
-  background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,153,255,0.2);
-  letter-spacing: 0.03em;
-}
-.nav-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--text-2); }
-.nav-right a:hover { color: var(--text); }
 
-/* ── Layout ───────────────────────────────────────────────────────── */
-main { max-width: 820px; margin: 0 auto; padding: 88px 24px 60px; }
-
-/* ── Hero ─────────────────────────────────────────────────────────── */
-.hero { text-align: center; margin-bottom: 40px; }
-.hero-eyebrow {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--accent); margin-bottom: 16px;
+.nav-brand {
+  display: flex; align-items: center; gap: 9px;
+  text-decoration: none;
 }
-.hero-eyebrow::before {
-  content: ''; display: block; width: 18px; height: 1px; background: var(--accent);
-}
-.hero-eyebrow::after {
-  content: ''; display: block; width: 18px; height: 1px; background: var(--accent);
-}
-.hero h1 {
-  font-family: var(--font-display); font-size: 2.4rem; font-weight: 600;
-  letter-spacing: -0.04em; line-height: 1.15; color: var(--text); margin-bottom: 12px;
-}
-.hero h1 span { color: var(--accent); }
-.hero p { font-size: 0.95rem; color: var(--text-2); max-width: 420px; margin: 0 auto; line-height: 1.6; }
-
-/* ── Mode tabs ────────────────────────────────────────────────────── */
-.mode-bar {
+/* Logo mark — X inside a border box, exactly as on resiquant.ai */
+.logo-box {
+  width: 24px; height: 24px;
+  border: 1.5px solid rgba(255,255,255,0.75);
+  border-radius: 3px;
   display: flex; align-items: center; justify-content: center;
-  gap: 4px; margin-bottom: 24px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 4px; width: fit-content; margin-left: auto; margin-right: auto;
+  flex-shrink: 0;
 }
-.mode-btn {
-  padding: 7px 20px; border-radius: var(--radius-md); border: none; cursor: pointer;
-  font-family: var(--font-body); font-size: 13px; font-weight: 500;
-  color: var(--text-2); background: transparent; transition: all 0.2s;
-}
-.mode-btn.active { background: var(--surface2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-.mode-btn:hover:not(.active) { color: var(--text); }
-
-/* ── Card ─────────────────────────────────────────────────────────── */
-.card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px;
-  transition: border-color 0.2s;
-}
-.card:hover { border-color: var(--border-hover); }
-.card-title {
-  font-family: var(--font-display); font-size: 13px; font-weight: 500;
-  color: var(--text-2); margin-bottom: 16px; text-transform: uppercase;
-  letter-spacing: 0.05em;
+.logo-box svg { width: 12px; height: 12px; }
+.nav-wordmark {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
-/* ── Drop zone ────────────────────────────────────────────────────── */
-.drop-zone {
-  border: 1.5px dashed var(--border); border-radius: var(--radius-md);
-  padding: 32px 20px; text-align: center; cursor: pointer;
-  transition: all 0.2s; background: transparent;
-  position: relative;
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent); background: var(--accent-dim);
-}
-.drop-zone input { display: none; }
-.drop-icon { font-size: 24px; margin-bottom: 8px; display: block; }
-.drop-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-.drop-title u { color: var(--accent); cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--accent); }
-.drop-sub { font-size: 11px; color: var(--text-3); }
-
-/* ── File chips ───────────────────────────────────────────────────── */
-.file-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.file-chip {
+.nav-actions {
   display: flex; align-items: center; gap: 6px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 4px 10px 4px 8px;
-  font-size: 11px; color: var(--text-2);
 }
-.file-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.file-chip button {
-  background: none; border: none; cursor: pointer; color: var(--text-3);
-  font-size: 13px; line-height: 1; padding: 0; transition: color 0.15s;
-}
-.file-chip button:hover { color: var(--red); }
-
-/* ── Submit button ────────────────────────────────────────────────── */
-.submit-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 12px; margin-top: 16px;
-  background: var(--accent); color: white;
-  border: none; border-radius: var(--radius-md); cursor: pointer;
-  font-family: var(--font-body); font-size: 13px; font-weight: 600;
-  letter-spacing: 0.01em; transition: all 0.2s;
-}
-.submit-btn:hover:not(:disabled) { background: #0088ee; box-shadow: 0 0 20px var(--accent-glow); }
-.submit-btn:disabled { background: #1a1a1a; color: var(--text-3); cursor: not-allowed; border: 1px solid var(--border); }
-
-/* ── Spinner ──────────────────────────────────────────────────────── */
-.spin {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.2); border-top-color: white;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Results ──────────────────────────────────────────────────────── */
-.result-wrapper { animation: fadeUp 0.3s ease; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-.result-meta {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  margin-bottom: 20px;
-}
-.meta-chip {
+.nav-pill {
   display: flex; align-items: center; gap: 5px;
-  font-size: 11px; color: var(--text-2);
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 3px 10px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: var(--green-dim);
+  border: 1px solid var(--green-border);
+  color: var(--green);
 }
-.meta-chip.green { color: var(--green); background: var(--green-dim); border-color: rgba(131,202,22,0.2); }
-.meta-chip.blue  { color: var(--accent); background: var(--accent-dim); border-color: rgba(0,153,255,0.2); }
+.pulse { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(0.85)} }
 
-.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-@media (max-width: 560px) { .fields-grid { grid-template-columns: 1fr; } }
-
-.field-tile {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 14px; transition: border-color 0.2s;
+.nav-btn {
+  padding: 5px 12px;
+  font-family: var(--font); font-size: 12px; font-weight: 500; letter-spacing: 0.01em;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-mid);
+  background: transparent; color: var(--text-2);
+  cursor: pointer; transition: all 0.14s;
+  text-decoration: none; display: inline-flex; align-items: center;
 }
-.field-tile:hover { border-color: var(--border-hover); }
-.field-label { font-size: 10px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
-.field-value { font-size: 13px; font-weight: 500; color: var(--text); word-break: break-all; line-height: 1.4; }
-.field-null  { font-size: 13px; color: var(--text-3); font-style: italic; }
+.nav-btn:hover { border-color: var(--border-high); color: var(--text); }
 
-.conf-bar-wrap { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
-.conf-bar-bg { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.conf-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-.conf-label { font-size: 10px; font-weight: 600; min-width: 28px; text-align: right; }
+/* ── Page shell ────────────────────────────────────────────────────────── */
+.page { padding-top: 54px; }
 
-.provenance-chip {
+/* ── Section wrapper ───────────────────────────────────────────────────── */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+
+/* ── Header band ───────────────────────────────────────────────────────── */
+.page-header {
+  padding: 56px 0 40px;
+  border-bottom: 1px solid var(--border);
+}
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 18px;
+}
+.eyebrow-line { width: 20px; height: 1px; background: var(--text-3); }
+
+.page-title {
+  font-size: clamp(28px, 3.8vw, 46px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin-bottom: 14px;
+  max-width: 560px;
+}
+.page-title em {
+  font-style: normal;
+  color: var(--green);
+}
+.page-sub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-2);
+  max-width: 440px;
+  letter-spacing: var(--ls);
+}
+
+/* ── Tab bar ───────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  gap: 2px;
+}
+.tab {
+  padding: 6px 18px;
+  font-family: var(--font); font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
+  border: none; border-radius: 4px;
+  background: transparent; color: var(--text-2);
+  cursor: pointer; transition: all 0.13s;
+}
+.tab.active {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.tab-note {
+  font-size: 12px; color: var(--text-3);
+}
+
+/* ── Two-column layout ─────────────────────────────────────────────────── */
+.two-col {
+  padding: 28px 0 80px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 740px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* ── Card ──────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.card-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.card-body { padding: 18px; }
+
+/* ── Drop zone ─────────────────────────────────────────────────────────── */
+.drop {
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--r-md);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  user-select: none;
+}
+.drop:hover, .drop.over {
+  border-color: var(--green);
+  background: var(--green-dim);
+}
+.drop input { display: none; }
+.drop-icon-wrap {
+  width: 34px; height: 34px; margin: 0 auto 13px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-3);
+}
+.drop-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+.drop-sub   { font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5; }
+.drop-tags  { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.tag {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 7px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r-xs);
+  color: var(--text-3);
+}
+
+/* file chips */
+.file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.file-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.file-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.file-name { font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-sz   { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.file-rm   {
+  width: 16px; height: 16px; border-radius: 50%; border: none;
+  background: transparent; color: var(--text-3); cursor: pointer;
+  font-size: 10px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.12s;
+  font-family: var(--font);
+}
+.file-rm:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+.btn-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.btn {
+  width: 100%; padding: 11px 18px;
+  font-family: var(--font); font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
+  border-radius: var(--r-sm); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.14s;
+}
+.btn-white { background: #f2f2f2; color: #0c0c0c; }
+.btn-white:hover { background: #e4e4e4; }
+.btn-white:disabled { opacity: 0.28; cursor: not-allowed; }
+.btn-ghost {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border-mid);
+}
+.btn-ghost:hover { border-color: var(--border-high); color: var(--text); }
+.btn-ghost[style*="display:none"] { display: none !important; }
+
+/* spinner */
+.spin { width: 13px; height: 13px; border: 1.5px solid rgba(0,0,0,0.15); border-top-color: #0c0c0c; border-radius: 50%; animation: rot .65s linear infinite; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.spin-g { width: 26px; height: 26px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: rot .8s linear infinite; }
+
+/* ── Results placeholder ───────────────────────────────────────────────── */
+.placeholder {
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+  padding: 52px 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ph-icon {
+  width: 30px; height: 30px; margin: 0 auto 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center; color: var(--text-3);
+}
+
+/* loading */
+.loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 52px 24px; gap: 14px;
+}
+.loading-text { font-size: 13px; color: var(--text-3); }
+
+/* ── Result card ───────────────────────────────────────────────────────── */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  animation: up .28s ease;
+}
+@keyframes up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+.result-top {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.badge-row { display: flex; align-items: center; gap: 6px; }
+.badge {
   display: inline-flex; align-items: center; gap: 4px;
-  margin-top: 6px; font-size: 10px; color: var(--text-3);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 4px; padding: 2px 6px; max-width: 100%; overflow: hidden;
-  white-space: nowrap; text-overflow: ellipsis;
+  font-size: 11px; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px;
 }
-.provenance-chip b { color: var(--text-2); font-weight: 500; flex-shrink: 0; }
+.badge-ok     { background: var(--green-dim); border: 1px solid var(--green-border); color: var(--green); }
+.badge-cached { background: var(--surface-2); border: 1px solid var(--border-mid); color: var(--text-3); }
+.badge-err    { background: rgba(240,65,65,0.08); border: 1px solid rgba(240,65,65,0.2); color: var(--red); }
+.chip-row { display: flex; align-items: center; gap: 5px; }
+.chip {
+  font-size: 11px; color: var(--text-3);
+  padding: 2px 8px;
+  background: var(--surface-2); border-radius: var(--r-xs);
+}
 
-/* ── Property addresses ───────────────────────────────────────────── */
-.addr-section { margin-top: 4px; }
-.addr-header { font-size: 10px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+/* sections inside result */
+.rsec { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.rsec:last-child { border-bottom: none; }
+.sec-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 12px;
+}
+
+/* field rows */
+.f-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 10px;
+}
+.f-row:last-child { margin-bottom: 0; }
+.f-left { flex: 1; min-width: 0; }
+.f-sub  { font-size: 10px; color: var(--text-3); margin-bottom: 3px; letter-spacing: 0.04em; }
+.f-val  { font-size: 13px; color: var(--text); word-break: break-word; }
+.f-nil  { font-size: 13px; color: var(--text-3); }
+.prov   {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; color: var(--text-3);
+  padding: 2px 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-xs); margin-top: 4px;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prov-sep { opacity: .35; }
+
+/* confidence */
+.conf-wrap { flex-shrink: 0; width: 44px; padding-top: 16px; }
+.conf-track { height: 2px; background: var(--border-mid); border-radius: 1px; overflow: hidden; margin-bottom: 3px; }
+.conf-fill { height: 100%; border-radius: 1px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.c-hi .conf-fill { background: var(--green); }
+.c-md .conf-fill { background: var(--amber); }
+.c-lo .conf-fill { background: var(--red); }
+.conf-pct { font-size: 10px; color: var(--text-3); text-align: right; }
+
+/* address list */
 .addr-list { display: flex; flex-direction: column; gap: 6px; }
 .addr-row {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 10px 12px;
-  transition: border-color 0.15s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm);
 }
-.addr-row:hover { border-color: var(--border-hover); }
-.addr-text { font-size: 12.5px; font-weight: 500; color: var(--text); line-height: 1.4; }
-.addr-prov { font-size: 10px; color: var(--text-3); margin-top: 2px; }
-.addr-conf { flex-shrink: 0; }
-
-/* ── View tabs ────────────────────────────────────────────────────── */
-.view-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
-.view-tab {
-  font-size: 11px; font-weight: 500; padding: 4px 12px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: transparent; color: var(--text-3); cursor: pointer; transition: all 0.15s;
+.addr-n {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  background: var(--green-dim); border: 1px solid var(--green-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: var(--green);
 }
-.view-tab.active { background: var(--surface2); color: var(--text); border-color: var(--border-hover); }
-.view-tab:hover:not(.active) { color: var(--text-2); }
+.addr-v { font-size: 12px; color: var(--text); flex: 1; }
+.addr-c { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 
-/* ── JSON view ────────────────────────────────────────────────────── */
-pre {
-  background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius-md);
-  padding: 16px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;
-  word-break: break-all; color: #8db4e0; line-height: 1.6; font-family: 'Fragment Mono', 'Fira Code', monospace;
+/* errors */
+.err-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 14px;
+  background: rgba(240,65,65,0.07);
+  border: 1px solid rgba(240,65,65,0.18);
+  border-radius: var(--r-sm);
+  font-size: 12px; color: var(--red);
 }
 
-/* ── Error block ──────────────────────────────────────────────────── */
-.error-block {
-  background: var(--red-dim); border: 1px solid rgba(250,76,89,0.25);
-  border-radius: var(--radius-md); padding: 12px 14px; margin-top: 12px;
-}
-.error-block p { font-size: 11px; color: var(--red); line-height: 1.6; }
+/* ── Batch panel ───────────────────────────────────────────────────────── */
+#panel-batch { display: none; }
+#panel-batch.show { display: block; }
 
-/* ── Batch: group ─────────────────────────────────────────────────── */
-.sub-group {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 16px; margin-bottom: 10px;
-  transition: border-color 0.2s;
+.batch-wrap { padding: 28px 0 80px; }
+.batch-upload {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  margin-bottom: 20px;
 }
-.sub-group:hover { border-color: var(--border-hover); }
-.sub-group-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.sub-group-label { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: 0.05em; text-transform: uppercase; }
-.sub-group-num {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent-dim); color: var(--accent);
-  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-  margin-right: 8px; flex-shrink: 0;
+.batch-modes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-top: 16px; padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
-.btn-remove-group {
-  font-size: 11px; color: var(--text-3); background: none;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 3px 10px; cursor: pointer; transition: all 0.15s;
+@media (max-width: 500px) { .batch-modes { grid-template-columns: 1fr; } }
+.mode-tile {
+  padding: 13px 16px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm);
 }
-.btn-remove-group:hover { color: var(--red); border-color: rgba(250,76,89,0.3); }
+.mode-tile-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.mode-tile-desc  { font-size: 11px; color: var(--text-3); line-height: 1.55; }
+.batch-btn-row { display: flex; gap: 8px; margin-top: 14px; }
+.batch-btn-row .btn { flex: 1; }
 
-.btn-add-group {
-  width: 100%; padding: 10px; margin-bottom: 14px;
-  background: transparent; border: 1.5px dashed var(--border);
-  border-radius: var(--radius-md); color: var(--text-3);
-  font-family: var(--font-body); font-size: 12px; font-weight: 500;
-  cursor: pointer; transition: all 0.2s;
+.batch-results { display: flex; flex-direction: column; gap: 14px; }
+.sub-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  animation: up .28s ease;
 }
-.btn-add-group:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-
-/* ── Batch result card ────────────────────────────────────────────── */
-.batch-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden;
-  animation: fadeUp 0.3s ease;
+.sub-head {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
 }
-.batch-card-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; border-bottom: 1px solid var(--border);
-  background: var(--surface2);
+.sub-n {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: var(--green-dim); border: 1px solid var(--green-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--green);
 }
-.batch-card-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
-.batch-card-meta { display: flex; align-items: center; gap: 8px; }
-.batch-card-body { padding: 20px; }
-
-/* ── Confidence helpers ───────────────────────────────────────────── */
-.conf-high { color: var(--green); }
-.conf-mid  { color: var(--amber); }
-.conf-low  { color: var(--red);   }
-.fill-high { background: var(--green); }
-.fill-mid  { background: var(--amber); }
-.fill-low  { background: var(--red);   }
-
-/* ── Empty state ──────────────────────────────────────────────────── */
-.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 13px; }
-.empty-state .icon { font-size: 28px; margin-bottom: 10px; display: block; opacity: 0.4; }
-
-/* ── Status dot ───────────────────────────────────────────────────── */
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-
-/* ── Divider ──────────────────────────────────────────────────────── */
-.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.sub-id   { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.sub-body { padding: 16px 18px; }
+.sub-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+}
+@media (max-width: 500px) { .sub-grid { grid-template-columns: 1fr; } }
+.sub-field-title { font-size: 10px; color: var(--text-3); margin-bottom: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+.sub-field-val   { font-size: 13px; color: var(--text); }
+.sub-field-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 </style>
 </head>
 <body>
 
-<!-- ── Navigation ───────────────────────────────────────────────── -->
+<!-- ── Navigation ──────────────────────────────────────────────────────── -->
 <nav>
-  <div class="nav-logo">
-    <div class="nav-logo-mark">RQ</div>
-    <span class="nav-logo-text">ResiQuant</span>
-    <span class="nav-badge">Extractor</span>
-  </div>
-  <div class="nav-right">
-    <div class="status-dot"></div>
-    <span>API live</span>
-    <a href="/docs" target="_blank">API Docs</a>
-    <a href="/metrics" target="_blank">Metrics</a>
+  <a class="nav-brand" href="/">
+    <div class="logo-box">
+      <!-- ResiQuant's X/asterisk mark -->
+      <svg viewBox="0 0 12 12" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.6" stroke-linecap="round">
+        <line x1="2" y1="2" x2="10" y2="10"/>
+        <line x1="10" y1="2" x2="2" y2="10"/>
+        <line x1="6"  y1="1" x2="6"  y2="11"/>
+        <line x1="1"  y1="6" x2="11" y2="6"/>
+      </svg>
+    </div>
+    <span class="nav-wordmark">ResiQuant</span>
+  </a>
+  <div class="nav-actions">
+    <a class="nav-btn" href="/docs" target="_blank">API docs</a>
+    <a class="nav-btn" href="/metrics" target="_blank">Metrics</a>
+    <div class="nav-pill">
+      <span class="pulse"></span>
+      Online
+    </div>
   </div>
 </nav>
 
-<!-- ── Main ─────────────────────────────────────────────────────── -->
-<main>
+<!-- ── Page ─────────────────────────────────────────────────────────────── -->
+<div class="page">
 
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-eyebrow">Submission Intelligence</div>
-    <h1>Extract broker data<br/>from <span>any submission</span></h1>
-    <p>Upload insurance submission emails and attachments. Get structured broker and property data in seconds.</p>
+  <!-- Header -->
+  <div class="page-header">
+    <div class="wrap">
+      <div class="eyebrow"><span class="eyebrow-line"></span>Submission Intelligence</div>
+      <h1 class="page-title">Extract broker &amp; property data <em>in seconds</em></h1>
+      <p class="page-sub">Upload insurance submission emails and attachments. Get structured broker info and property addresses with confidence scores.</p>
+    </div>
   </div>
 
-  <!-- Mode bar -->
-  <div class="mode-bar">
-    <button class="mode-btn active" onclick="switchMode('single')">Single Submission</button>
-    <button class="mode-btn" onclick="switchMode('batch')">Batch Mode</button>
-  </div>
-
-  <!-- ── SINGLE MODE ────────────────────────────────────────────── -->
-  <div id="singleMode">
-    <div class="card">
-      <div class="card-title">Upload Files</div>
-      <div class="drop-zone" id="singleDrop">
-        <input type="file" id="singleInput" multiple accept=".pdf,.xlsx,.xls,.docx"/>
-        <span class="drop-icon">📄</span>
-        <div class="drop-title">Drop files here or <u onclick="document.getElementById('singleInput').click()">browse</u></div>
-        <div class="drop-sub">Email PDF + attachments &nbsp;·&nbsp; PDF, XLSX, XLS, DOCX</div>
+  <!-- Tab bar -->
+  <div class="wrap">
+    <div class="tab-bar">
+      <div class="tabs">
+        <button class="tab active" id="tab-single" onclick="switchTab('single')">Single submission</button>
+        <button class="tab"        id="tab-batch"  onclick="switchTab('batch')">Batch</button>
       </div>
-      <div class="file-list" id="singleFileList"></div>
-      <button class="submit-btn" id="singleBtn" disabled onclick="runSingle()">
-        Extract Broker Data
-      </button>
-    </div>
-
-    <div id="singleResult" style="display:none">
-      <div class="card result-wrapper" id="singleResultInner"></div>
+      <span class="tab-note" id="tab-note">Email PDF + attachments</span>
     </div>
   </div>
 
-  <!-- ── BATCH MODE ─────────────────────────────────────────────── -->
-  <div id="batchMode" style="display:none">
-    <div class="card">
-      <div class="card-title">Submissions</div>
-      <div id="subGroups"></div>
-      <button class="btn-add-group" onclick="addGroup()">+ Add Submission</button>
-      <button class="submit-btn" id="batchBtn" disabled onclick="runBatch()">
-        Extract All Submissions
-      </button>
+  <!-- ── Single panel ──────────────────────────────────────────────────── -->
+  <div id="panel-single">
+    <div class="wrap">
+      <div class="two-col">
+
+        <!-- Upload -->
+        <div>
+          <div class="card">
+            <div class="card-head">
+              <span class="card-label">Files</span>
+            </div>
+            <div class="card-body">
+              <div class="drop" id="dz"
+                onclick="document.getElementById('fi').click()"
+                ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event)">
+                <input id="fi" type="file" multiple accept=".pdf,.xlsx,.xls,.docx" onchange="onPick(this.files)"/>
+                <div class="drop-icon-wrap">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
+                  </svg>
+                </div>
+                <div class="drop-title">Drop files here</div>
+                <div class="drop-sub">or click to browse</div>
+                <div class="drop-tags">
+                  <span class="tag">PDF</span>
+                  <span class="tag">XLSX</span>
+                  <span class="tag">XLS</span>
+                  <span class="tag">DOCX</span>
+                </div>
+              </div>
+              <div class="file-list" id="fl"></div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-white" id="ex-btn" onclick="doExtract()" disabled>Extract data</button>
+            <button class="btn btn-ghost" id="cl-btn" onclick="clearSingle()" style="display:none">Clear</button>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results-col">
+          <div class="placeholder" id="rph">
+            <div class="ph-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            Upload files and click Extract
+          </div>
+        </div>
+
+      </div>
     </div>
-    <div id="batchResults"></div>
   </div>
 
-</main>
+  <!-- ── Batch panel ────────────────────────────────────────────────────── -->
+  <div id="panel-batch">
+    <div class="wrap">
+      <div class="batch-wrap">
+
+        <div class="batch-upload">
+          <div class="card-label" style="margin-bottom:16px">Upload submissions</div>
+
+          <div class="drop" id="bdz"
+            onclick="document.getElementById('bfi').click()"
+            ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onBatchDrop(event)">
+            <input id="bfi" type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.zip" onchange="onBatchPick(this.files)"/>
+            <div class="drop-icon-wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
+              </svg>
+            </div>
+            <div class="drop-title">Drop multiple submissions</div>
+            <div class="drop-sub">ZIP files or all files flat</div>
+            <div class="drop-tags">
+              <span class="tag">ZIP</span>
+              <span class="tag">PDF</span>
+              <span class="tag">XLSX</span>
+              <span class="tag">DOCX</span>
+            </div>
+          </div>
+
+          <div class="file-list" id="bfl"></div>
+
+          <div class="batch-modes">
+            <div class="mode-tile">
+              <div class="mode-tile-title">ZIP mode</div>
+              <div class="mode-tile-desc">One .zip per submission. Each archive contains the email PDF plus attachments.</div>
+            </div>
+            <div class="mode-tile">
+              <div class="mode-tile-title">Flat upload</div>
+              <div class="mode-tile-desc">Upload all files together. Email PDFs are auto-detected and grouped with attachments.</div>
+            </div>
+          </div>
+
+          <div class="batch-btn-row">
+            <button class="btn btn-white" id="bex-btn" onclick="doBatch()" disabled>Extract all</button>
+            <button class="btn btn-ghost" id="bcl-btn" onclick="clearBatch()" style="display:none">Clear</button>
+          </div>
+        </div>
+
+        <div class="batch-results" id="batch-results"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
 
 <script>
-// ── State ──────────────────────────────────────────────────────────
-let singleFiles = [];
-let groups = [];
-let gc = 0;
+// ── State ──────────────────────────────────────────────────────────────────
+let sFiles = [], bFiles = [];
 
-// ── Mode ───────────────────────────────────────────────────────────
-function switchMode(m) {
-  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active', (m==='single'&&i===0)||(m==='batch'&&i===1)));
-  document.getElementById('singleMode').style.display = m==='single' ? '' : 'none';
-  document.getElementById('batchMode').style.display  = m==='batch'  ? '' : 'none';
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(t) {
+  document.getElementById('panel-single').style.display = t === 'single' ? '' : 'none';
+  const bp = document.getElementById('panel-batch');
+  bp.style.display = t === 'batch' ? 'block' : 'none';
+  bp.classList.toggle('show', t === 'batch');
+  document.getElementById('tab-single').classList.toggle('active', t === 'single');
+  document.getElementById('tab-batch').classList.toggle('active', t === 'batch');
+  document.getElementById('tab-note').textContent =
+    t === 'single' ? 'Email PDF + attachments' : 'Multiple submissions at once';
 }
 
-// ── Single drop ────────────────────────────────────────────────────
-const sDrop = document.getElementById('singleDrop');
-const sIn   = document.getElementById('singleInput');
-sDrop.addEventListener('dragover', e => { e.preventDefault(); sDrop.classList.add('drag-over'); });
-sDrop.addEventListener('dragleave', () => sDrop.classList.remove('drag-over'));
-sDrop.addEventListener('drop', e => { e.preventDefault(); sDrop.classList.remove('drag-over'); addSingle([...e.dataTransfer.files]); });
-sIn.addEventListener('change', () => { addSingle([...sIn.files]); sIn.value=''; });
+// ── Drag helpers ───────────────────────────────────────────────────────────
+function onDragOver(e, el) { e.preventDefault(); el.classList.add('over'); }
+function onDragLeave(el)   { el.classList.remove('over'); }
+function onDrop(e)  { e.preventDefault(); document.getElementById('dz').classList.remove('over'); onPick(e.dataTransfer.files); }
+function onBatchDrop(e) { e.preventDefault(); document.getElementById('bdz').classList.remove('over'); onBatchPick(e.dataTransfer.files); }
 
-function addSingle(files) {
-  files.forEach(f => { if (!singleFiles.find(x=>x.name===f.name)) singleFiles.push(f); });
-  renderSingle();
+// ── File handling ──────────────────────────────────────────────────────────
+function onPick(fl) {
+  sFiles = Array.from(fl);
+  renderChips(sFiles, 'fl', 's');
+  document.getElementById('ex-btn').disabled = !sFiles.length;
+  document.getElementById('cl-btn').style.display = sFiles.length ? '' : 'none';
 }
-function removeSingle(name) { singleFiles = singleFiles.filter(f=>f.name!==name); renderSingle(); }
-function renderSingle() {
-  document.getElementById('singleFileList').innerHTML = singleFiles.map(f =>
-    `<div class="file-chip"><div class="file-chip-dot"></div>${f.name}<button onclick="removeSingle('${CSS.escape(f.name)}')" title="Remove">&times;</button></div>`
-  ).join('');
-  document.getElementById('singleBtn').disabled = !singleFiles.length;
+function onBatchPick(fl) {
+  bFiles = Array.from(fl);
+  renderChips(bFiles, 'bfl', 'b');
+  document.getElementById('bex-btn').disabled = !bFiles.length;
+  document.getElementById('bcl-btn').style.display = bFiles.length ? '' : 'none';
+}
+function renderChips(files, cid, prefix) {
+  document.getElementById(cid).innerHTML = files.map((f,i) => `
+    <div class="file-chip">
+      <span class="file-dot"></span>
+      <span class="file-name">${esc(f.name)}</span>
+      <span class="file-sz">${fmtSz(f.size)}</span>
+      <button class="file-rm" onclick="rmFile(${i},'${prefix}')" title="Remove">✕</button>
+    </div>`).join('');
+}
+function rmFile(i, p) {
+  if (p === 's') {
+    sFiles.splice(i,1); renderChips(sFiles,'fl','s');
+    document.getElementById('ex-btn').disabled = !sFiles.length;
+    document.getElementById('cl-btn').style.display = sFiles.length ? '' : 'none';
+  } else {
+    bFiles.splice(i,1); renderChips(bFiles,'bfl','b');
+    document.getElementById('bex-btn').disabled = !bFiles.length;
+    document.getElementById('bcl-btn').style.display = bFiles.length ? '' : 'none';
+  }
+}
+function clearSingle() {
+  sFiles = []; document.getElementById('fi').value = '';
+  renderChips([],'fl','s');
+  document.getElementById('ex-btn').disabled = true;
+  document.getElementById('cl-btn').style.display = 'none';
+  document.getElementById('results-col').innerHTML = phHTML();
+}
+function clearBatch() {
+  bFiles = []; document.getElementById('bfi').value = '';
+  renderChips([],'bfl','b');
+  document.getElementById('bex-btn').disabled = true;
+  document.getElementById('bcl-btn').style.display = 'none';
+  document.getElementById('batch-results').innerHTML = '';
+}
+function phHTML() {
+  return `<div class="placeholder" id="rph">
+    <div class="ph-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    Upload files and click Extract
+  </div>`;
 }
 
-async function runSingle() {
-  const btn = document.getElementById('singleBtn');
+// ── Single extract ─────────────────────────────────────────────────────────
+async function doExtract() {
+  const btn = document.getElementById('ex-btn');
+  const col = document.getElementById('results-col');
   btn.disabled = true;
   btn.innerHTML = '<div class="spin"></div>Extracting…';
-  document.getElementById('singleResult').style.display = 'none';
-
+  col.innerHTML = '<div class="loading"><div class="spin-g"></div><div class="loading-text">Analysing documents…</div></div>';
   const fd = new FormData();
-  singleFiles.forEach(f => fd.append('files', f));
+  sFiles.forEach(f => fd.append('files', f));
   try {
-    const r = await fetch('/extract', {method:'POST', body:fd});
-    const d = await r.json();
-    document.getElementById('singleResultInner').innerHTML = buildResultHTML(d, 'single');
-    document.getElementById('singleResult').style.display = '';
-    document.getElementById('singleResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+    const r = await fetch('/extract', { method:'POST', body:fd });
+    if (!r.ok) throw new Error(`${r.status} — ${await r.text()}`);
+    col.innerHTML = renderResult(await r.json());
   } catch(e) {
-    alert('Request failed: ' + e.message);
+    col.innerHTML = `<div class="err-row"><span>⚠</span><span>${esc(e.message)}</span></div>`;
   } finally {
-    btn.disabled = !singleFiles.length;
-    btn.innerHTML = 'Extract Broker Data';
+    btn.disabled = false;
+    btn.innerHTML = 'Extract data';
   }
 }
 
-// ── Batch ──────────────────────────────────────────────────────────
-function addGroup() {
-  const id = ++gc;
-  groups.push({id, files:[]});
-  const el = document.createElement('div');
-  el.className = 'sub-group'; el.id = `grp_${id}`;
-  el.innerHTML = `
-    <div class="sub-group-head">
-      <div style="display:flex;align-items:center">
-        <div class="sub-group-num">${id}</div>
-        <span class="sub-group-label">Submission ${id}</span>
+// ── Batch extract ──────────────────────────────────────────────────────────
+async function doBatch() {
+  const btn = document.getElementById('bex-btn');
+  const out = document.getElementById('batch-results');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div>Processing…';
+  out.innerHTML = '<div class="loading"><div class="spin-g"></div><div class="loading-text">Processing submissions…</div></div>';
+  const fd = new FormData();
+  bFiles.forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch('/batch-extract', { method:'POST', body:fd });
+    if (!r.ok) throw new Error(`${r.status} — ${await r.text()}`);
+    const data = await r.json();
+    out.innerHTML = data.submissions.map((s,i) => renderSub(s,i)).join('');
+  } catch(e) {
+    out.innerHTML = `<div class="err-row"><span>⚠</span><span>${esc(e.message)}</span></div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Extract all';
+  }
+}
+
+// ── Render result ──────────────────────────────────────────────────────────
+function renderResult(d) {
+  const lat   = d.latency_ms != null ? `${Math.round(d.latency_ms)}ms` : null;
+  const tok   = d.token_usage ? `${d.token_usage.total_tokens.toLocaleString()} tok` : null;
+  const cost  = d.token_usage?.estimated_cost_usd != null ? `$${d.token_usage.estimated_cost_usd.toFixed(4)}` : null;
+  const chips = [lat, tok, cost].filter(Boolean).map(v => `<span class="chip">${v}</span>`).join('');
+  const errs  = (d.errors||[]).map(e => `<div class="err-row"><span>⚠</span><span>${esc(e)}</span></div>`).join('');
+
+  return `<div class="result-card">
+    <div class="result-top">
+      <div class="badge-row">
+        <span class="badge badge-ok">Extracted</span>
+        ${d.cache_hit ? '<span class="badge badge-cached">Cached</span>' : ''}
       </div>
-      <button class="btn-remove-group" onclick="removeGroup(${id})">Remove</button>
+      <div class="chip-row">${chips}</div>
     </div>
-    <div class="drop-zone" id="drop_${id}" style="padding:18px">
-      <input type="file" id="inp_${id}" multiple accept=".pdf,.xlsx,.xls,.docx"/>
-      <div class="drop-title" style="font-size:12px">Drop files or <u onclick="document.getElementById('inp_${id}').click()">browse</u></div>
-      <div class="drop-sub">Email PDF + attachments</div>
+    ${errs ? `<div class="rsec">${errs}</div>` : ''}
+    <div class="rsec">
+      <div class="sec-label">Broker</div>
+      ${fRow(d.broker_name,  'Name')}
+      ${fRow(d.broker_email, 'Email')}
+      ${fRow(d.brokerage,    'Brokerage')}
+      ${fRow(d.complete_brokerage_address, 'Address')}
     </div>
-    <div class="file-list" id="fl_${id}" style="margin-top:8px"></div>`;
-  document.getElementById('subGroups').appendChild(el);
-
-  const dz = document.getElementById(`drop_${id}`);
-  const inp = document.getElementById(`inp_${id}`);
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addGroupFiles(id,[...e.dataTransfer.files]); });
-  inp.addEventListener('change', () => { addGroupFiles(id,[...inp.files]); inp.value=''; });
-  updateBatchBtn();
-}
-
-function removeGroup(id) {
-  groups = groups.filter(g=>g.id!==id);
-  document.getElementById(`grp_${id}`)?.remove();
-  updateBatchBtn();
-}
-function addGroupFiles(id, files) {
-  const g = groups.find(g=>g.id===id); if (!g) return;
-  files.forEach(f => { if (!g.files.find(x=>x.name===f.name)) g.files.push(f); });
-  renderGroupFiles(id);
-}
-function removeGroupFile(gid, name) {
-  const g = groups.find(g=>g.id===gid); if (g) g.files = g.files.filter(f=>f.name!==name);
-  renderGroupFiles(gid);
-}
-function renderGroupFiles(id) {
-  const g = groups.find(g=>g.id===id); if (!g) return;
-  document.getElementById(`fl_${id}`).innerHTML = g.files.map(f =>
-    `<div class="file-chip"><div class="file-chip-dot"></div>${f.name}<button onclick="removeGroupFile(${id},'${CSS.escape(f.name)}')" title="Remove">&times;</button></div>`
-  ).join('');
-  updateBatchBtn();
-}
-function updateBatchBtn() {
-  document.getElementById('batchBtn').disabled = !groups.some(g=>g.files.length>0);
-}
-
-async function runBatch() {
-  const btn = document.getElementById('batchBtn');
-  btn.disabled = true; btn.innerHTML = '<div class="spin"></div>Extracting all…';
-  document.getElementById('batchResults').innerHTML = '';
-
-  const active = groups.filter(g=>g.files.length>0);
-  const results = await Promise.all(active.map(async g => {
-    const fd = new FormData();
-    g.files.forEach(f => fd.append('files', f));
-    try {
-      const r = await fetch('/extract', {method:'POST', body:fd});
-      return {label:`Submission ${g.id}`, data: await r.json(), ok: r.ok};
-    } catch(e) {
-      return {label:`Submission ${g.id}`, data:null, ok:false, err:e.message};
-    }
-  }));
-
-  results.forEach((r,i) => {
-    const card = document.createElement('div');
-    card.className = 'batch-card';
-    if (!r.ok || !r.data) {
-      card.innerHTML = `
-        <div class="batch-card-head">
-          <div class="batch-card-title">📄 ${r.label}</div>
-          <span style="font-size:11px;color:var(--red)">Failed</span>
-        </div>
-        <div class="batch-card-body"><div class="error-block"><p>${r.err||'Unknown error'}</p></div></div>`;
-    } else {
-      const uid = `bc_${i}`;
-      card.innerHTML = `
-        <div class="batch-card-head">
-          <div class="batch-card-title">
-            <div class="sub-group-num" style="width:22px;height:22px;font-size:11px">${i+1}</div>
-            ${r.label}
-          </div>
-          <div class="batch-card-meta">
-            ${r.data.cache_hit
-              ? `<div class="meta-chip green">⚡ cached</div>`
-              : `<div class="meta-chip blue">✦ LLM</div>`}
-            <div class="meta-chip">${r.data.latency_ms}ms</div>
-            ${r.data.token_usage ? `<div class="meta-chip">${r.data.token_usage.total_tokens} tok</div>` : ''}
-          </div>
-        </div>
-        <div class="batch-card-body">
-          <div class="view-tabs">
-            <button class="view-tab active" onclick="showTab('${uid}',0)">Visual</button>
-            <button class="view-tab" onclick="showTab('${uid}',1)">JSON</button>
-          </div>
-          <div id="${uid}_v">${buildResultHTML(r.data, uid)}</div>
-          <pre id="${uid}_j" style="display:none">${JSON.stringify(r.data,null,2)}</pre>
-        </div>`;
-    }
-    document.getElementById('batchResults').appendChild(card);
-  });
-
-  btn.disabled = false; btn.innerHTML = 'Extract All Submissions';
-}
-
-// ── Result HTML ────────────────────────────────────────────────────
-function confColor(c) { return c>=0.8?'conf-high':c>=0.5?'conf-mid':'conf-low'; }
-function fillColor(c) { return c>=0.8?'fill-high':c>=0.5?'fill-mid':'fill-low'; }
-
-function confBar(c) {
-  const pct = Math.round(c*100);
-  return `<div class="conf-bar-wrap">
-    <div class="conf-bar-bg"><div class="conf-bar-fill ${fillColor(c)}" style="width:${pct}%"></div></div>
-    <span class="conf-label ${confColor(c)}">${pct}%</span>
+    <div class="rsec">
+      <div class="sec-label">Properties (${d.property_addresses?.length||0})</div>
+      ${addrList(d.property_addresses)}
+    </div>
   </div>`;
 }
 
-function provChip(p) {
-  if (!p) return '';
-  const pg = p.page ? ` · p${p.page}` : '';
-  return `<div class="provenance-chip"><b>${p.doc_name}${pg}</b>&nbsp;·&nbsp;"${p.snippet?.slice(0,55)}${p.snippet?.length>55?'…':''}"</div>`;
-}
-
-function fieldTile(label, field) {
-  const val = field.value
-    ? `<div class="field-value">${field.value}</div>`
-    : `<div class="field-null">not found</div>`;
-  return `<div class="field-tile">
-    <div class="field-label">${label}</div>
-    ${val}
-    ${confBar(field.confidence)}
-    ${provChip(field.provenance)}
+function fRow(field, label) {
+  if (!field) return '';
+  const v    = field.value;
+  const c    = field.confidence ?? 0;
+  const p    = field.provenance;
+  const cls  = c >= .8 ? 'c-hi' : c >= .5 ? 'c-md' : 'c-lo';
+  const pct  = Math.round(c * 100);
+  const provHTML = p ? `<span class="prov">${esc(p.doc_name)}${p.page!=null?`<span class="prov-sep"> · </span>p${p.page}`:''}${p.snippet?`<span class="prov-sep"> · </span>${esc(p.snippet.slice(0,36))}…`:''}</span>` : '';
+  return `<div class="f-row">
+    <div class="f-left">
+      <div class="f-sub">${label}</div>
+      ${v ? `<div class="f-val">${esc(v)}</div>${provHTML}` : '<div class="f-nil">—</div>'}
+    </div>
+    <div class="conf-wrap ${cls}">
+      <div class="conf-track"><div class="conf-fill" style="width:${pct}%"></div></div>
+      <div class="conf-pct">${pct}%</div>
+    </div>
   </div>`;
 }
 
-function buildResultHTML(d, uid) {
-  const meta = `<div class="result-meta">
-    <div class="meta-chip" title="Request ID">⬡ ${d.request_id?.slice(0,8)}…</div>
-    ${d.cache_hit ? `<div class="meta-chip green">⚡ Cache hit</div>` : `<div class="meta-chip blue">✦ LLM call</div>`}
-    <div class="meta-chip">⏱ ${d.latency_ms}ms</div>
-    ${d.token_usage ? `<div class="meta-chip">↑ ${d.token_usage.prompt_tokens} · ↓ ${d.token_usage.completion_tokens} tokens</div>` : ''}
-    ${d.token_usage?.estimated_cost_usd != null ? `<div class="meta-chip">$ ${d.token_usage.estimated_cost_usd}</div>` : ''}
-  </div>`;
+function addrList(addrs) {
+  if (!addrs || !addrs.length) return '<div style="font-size:12px;color:var(--text-3)">No addresses found</div>';
+  return `<div class="addr-list">${addrs.map((a,i) => `
+    <div class="addr-row">
+      <div class="addr-n">${i+1}</div>
+      <div class="addr-v">${esc(a.address)}</div>
+      <div class="addr-c">${Math.round(a.confidence*100)}%</div>
+    </div>`).join('')}</div>`;
+}
 
-  const fields = `<div class="fields-grid">
-    ${fieldTile('Broker Name', d.broker_name)}
-    ${fieldTile('Broker Email', d.broker_email)}
-    ${fieldTile('Brokerage', d.brokerage)}
-    ${fieldTile('Brokerage Address', d.complete_brokerage_address)}
-  </div>`;
-
-  let addrs = '';
-  if (d.property_addresses?.length) {
-    const rows = d.property_addresses.map(a => `
-      <div class="addr-row">
+function renderSub(sub, i) {
+  const d = sub.result;
+  const lat = d.latency_ms ? `${Math.round(d.latency_ms)}ms` : null;
+  return `<div class="sub-card">
+    <div class="sub-head">
+      <div class="sub-n">${i+1}</div>
+      <div class="sub-id">${esc(sub.submission_id)}</div>
+      ${d.cache_hit ? '<span class="badge badge-cached">Cached</span>' : ''}
+      ${lat ? `<span class="chip">${lat}</span>` : ''}
+    </div>
+    <div class="sub-body">
+      <div class="sub-grid">
         <div>
-          <div class="addr-text">${a.address}</div>
-          ${a.provenance ? `<div class="addr-prov">${a.provenance.doc_name}${a.provenance.page?` · p${a.provenance.page}`:''}</div>` : ''}
+          <div class="sub-field-title">Broker</div>
+          <div class="sub-field-val">${esc(d.broker_name?.value||'—')}</div>
+          <div class="sub-field-sub">${esc(d.broker_email?.value||'')}</div>
         </div>
-        <div class="addr-conf"><span class="conf-label ${confColor(a.confidence)}" style="font-size:11px">${Math.round(a.confidence*100)}%</span></div>
-      </div>`).join('');
-    addrs = `<div class="addr-section">
-      <div class="addr-header">Property Addresses &nbsp;(${d.property_addresses.length})</div>
-      <div class="addr-list">${rows}</div>
-    </div>`;
-  } else {
-    addrs = `<div class="empty-state" style="padding:20px"><span class="icon">🗺</span>No property addresses found</div>`;
-  }
-
-  const errs = d.errors?.length
-    ? `<div class="error-block"><p>${d.errors.join('<br/>')}</p></div>` : '';
-
-  return meta + fields + addrs + errs;
+        <div>
+          <div class="sub-field-title">Brokerage</div>
+          <div class="sub-field-val">${esc(d.brokerage?.value||'—')}</div>
+          <div class="sub-field-sub">${esc((d.complete_brokerage_address?.value||'').slice(0,55))}</div>
+        </div>
+      </div>
+      ${d.property_addresses?.length ? `
+        <div class="sub-field-title" style="margin-bottom:6px">Properties (${d.property_addresses.length})</div>
+        <div class="addr-list">
+          ${d.property_addresses.slice(0,3).map((a,j)=>`
+            <div class="addr-row">
+              <div class="addr-n">${j+1}</div>
+              <div class="addr-v">${esc(a.address)}</div>
+              <div class="addr-c">${Math.round(a.confidence*100)}%</div>
+            </div>`).join('')}
+          ${d.property_addresses.length>3 ? `<div style="font-size:11px;color:var(--text-3);padding:6px 12px">+${d.property_addresses.length-3} more</div>` : ''}
+        </div>` : ''}
+      ${(d.errors||[]).map(e=>`<div class="err-row" style="margin-top:8px"><span>⚠</span><span>${esc(e)}</span></div>`).join('')}
+    </div>
+  </div>`;
 }
 
-// ── View tab toggle ────────────────────────────────────────────────
-function showTab(uid, idx) {
-  const vEl = document.getElementById(`${uid}_v`);
-  const jEl = document.getElementById(`${uid}_j`);
-  if (!vEl || !jEl) return;
-  const tabs = vEl.closest('.batch-card-body, .card')?.querySelectorAll('.view-tab');
-  tabs?.forEach((t,i) => t.classList.toggle('active', i===idx));
-  vEl.style.display = idx===0 ? '' : 'none';
-  jEl.style.display = idx===1 ? '' : 'none';
+// ── Utilities ──────────────────────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-// Single view tabs
-function showViewTab(vId, jId, idx) {
-  const v = document.getElementById(vId), j = document.getElementById(jId); if(!v||!j) return;
-  v.closest('.card')?.querySelectorAll('.view-tab').forEach((t,i) => t.classList.toggle('active',i===idx));
-  v.style.display=idx===0?'':'none'; j.style.display=idx===1?'':'none';
+function fmtSz(b) {
+  if (b < 1024) return b+'B';
+  if (b < 1048576) return (b/1024).toFixed(1)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
 }
-
-// Start with one batch group pre-added
-addGroup();
 </script>
 </body>
 </html>
