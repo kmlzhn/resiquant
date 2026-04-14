@@ -29,7 +29,11 @@ Rules:
 - If a field is not found, set value to null and confidence to 0.0.
 - confidence is a float 0.0–1.0 representing how certain you are.
 - provenance must name the exact doc_name, page number (null if not applicable), and a short verbatim snippet (<120 chars) from that document.
-- property_addresses: list every insured property address found across all documents.
+- property_addresses: list ONLY the physical insured property locations — the buildings or sites being covered by the policy.
+  DO NOT include: applicant/owner mailing addresses, LLC mailing addresses, broker office addresses, or any address
+  labeled "Mailing Address" unless it is explicitly also labeled as the insured location.
+  In forms with separate "Mailing Address" and "Building Information / Location" sections, use ONLY the building/location address.
+  If the same address appears in multiple documents, include it ONLY ONCE in the list.
 - Output ONLY valid JSON. No markdown, no explanation, no extra text.
 
 Output schema:
@@ -97,6 +101,37 @@ EXPECTED OUTPUT:
     {"address": "2969 Wilshire Blvd, Los Angeles, CA 90010", "confidence": 0.95, "provenance": {"doc_name": "FILE SUMMARY.PDF", "page": 2, "snippet": "Location 3: 2969 Wilshire Blvd, Los Angeles, CA 90010"}}
   ]
 }
+--- EXAMPLE 3 ---
+DOCUMENT: Mail - Francisco Galvis - Outlook.pdf  [Page 1]
+...
+From: Eli Chlomovitz AU <eli.chlomovitz@xptspecialty.com>
+Subject: FW: [REF# 0451120] - 14950 Burbank Blvd LLC
+Please review the attached new submission for EQ located in Sherman Oaks 91411
+Eli Chlomovitz AU  Vice President – Commercial Underwriter/Broker
+XPT Specialty Woodland Hills CA
+Direct: (714) 395-5089
+Email: eli.chlomovitz@xptspecialty.com
+...
+DOCUMENT: Attachment.pdf  [Page 1]
+ICAT EARTHQUAKE COVERAGE REQUEST FORM
+SECTION I – APPLICANT
+Account Name: 14950 Burbank Blvd, LLC
+Mailing Address: 10341 Vanalde n Ave
+City: Porter Ranch  State: CA  ZIP: 91326
+SECTION II - BUILDING INFORMATION (if different from above)
+Location #: 14950 Burbank Blvd, Sherman Oaks, CA. 91411
+
+EXPECTED OUTPUT:
+{
+  "broker_name": {"value": "Eli Chlomovitz", "confidence": 0.96, "provenance": {"doc_name": "Mail - Francisco Galvis - Outlook.pdf", "page": 1, "snippet": "Eli Chlomovitz AU  Vice President"}},
+  "broker_email": {"value": "eli.chlomovitz@xptspecialty.com", "confidence": 0.99, "provenance": {"doc_name": "Mail - Francisco Galvis - Outlook.pdf", "page": 1, "snippet": "eli.chlomovitz@xptspecialty.com"}},
+  "brokerage": {"value": "XPT Specialty", "confidence": 0.97, "provenance": {"doc_name": "Mail - Francisco Galvis - Outlook.pdf", "page": 1, "snippet": "XPT Specialty Woodland Hills CA"}},
+  "complete_brokerage_address": {"value": null, "confidence": 0.0, "provenance": null},
+  "property_addresses": [
+    {"address": "14950 Burbank Blvd, Sherman Oaks, CA 91411", "confidence": 0.96, "provenance": {"doc_name": "Attachment.pdf", "page": 1, "snippet": "Location #: 14950 Burbank Blvd, Sherman Oaks, CA. 91411"}}
+  ]
+}
+NOTE: The "Mailing Address" (10341 Vanalde n Ave, Porter Ranch) is the LLC owner's contact address — it is NOT an insured property and must NOT appear in property_addresses.
 --- END EXAMPLES ---
 """
 
@@ -140,15 +175,31 @@ def _build_field(raw: Any) -> FieldResult:
     )
 
 
+def _normalize_address(addr: str) -> str:
+    """Canonical form for deduplication: lowercase, collapse whitespace, strip punctuation."""
+    import re as _re
+    addr = addr.lower().strip()
+    addr = _re.sub(r"[.\-]", " ", addr)   # treat dots/hyphens as spaces
+    addr = _re.sub(r"\s+", " ", addr)      # collapse whitespace
+    addr = _re.sub(r"[^\w\s]", "", addr)   # drop remaining punctuation
+    return addr
+
+
 def _build_addresses(raw: Any) -> list[PropertyAddress]:
     if not isinstance(raw, list):
         return []
+    seen: set[str] = set()
     result = []
     for item in raw:
         if not isinstance(item, dict):
             continue
+        addr = item.get("address", "")
+        key = _normalize_address(addr)
+        if key in seen or not key:
+            continue
+        seen.add(key)
         result.append(PropertyAddress(
-            address=item.get("address", ""),
+            address=addr,
             confidence=float(item.get("confidence", 0.0)),
             provenance=_build_provenance(item.get("provenance")),
         ))

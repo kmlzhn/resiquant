@@ -9,11 +9,13 @@ import uuid
 import zipfile
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import metrics as metrics_store
+from app import metrics as metrics_store, validators
 from app.extractor import extract
 from app.models import BatchExtractionResult, ExtractionResult, FieldResult, MetricsResponse
 from app.parser import parse_file
@@ -345,6 +347,26 @@ h1{{font-size:clamp(24px,3vw,36px);font-weight:500;letter-spacing:-0.02em;margin
 </div>
 </body>
 </html>"""
+
+
+class FieldValidationRequest(BaseModel):
+    field: str
+    value: str
+
+
+@app.post("/validate-field", summary="Validate a manually corrected field value")
+async def validate_field_endpoint(body: FieldValidationRequest):
+    """
+    Run field-level validation on a user-corrected value.
+    Supported fields: broker_email, complete_brokerage_address.
+    Other fields always return valid=true (no structural rule to check).
+    """
+    errors: list[str] = []
+    if body.field == "broker_email":
+        errors = validators.validate_broker_email(body.value)
+    elif body.field == "complete_brokerage_address":
+        errors = validators.validate_brokerage_address(body.value)
+    return {"field": body.field, "value": body.value, "valid": len(errors) == 0, "errors": errors}
 
 
 @app.get("/health", summary="Health check")

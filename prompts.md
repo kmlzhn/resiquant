@@ -13,7 +13,9 @@ Rules:
 - If a field is not found, set value to null and confidence to 0.0.
 - confidence is a float 0.0–1.0 representing how certain you are.
 - provenance must name the exact doc_name, page number (null if not applicable), and a short verbatim snippet (<120 chars).
-- property_addresses: list every insured property address found across all documents.
+- property_addresses: list ONLY the physical insured property locations (buildings/sites being covered).
+  Do NOT include applicant mailing addresses, LLC contact addresses, or broker office addresses.
+  In forms with separate "Mailing Address" and "Building Information / Location" sections, use ONLY the building/location address.
 - Output ONLY valid JSON. No markdown, no explanation, no extra text.
 
 Output schema:
@@ -85,6 +87,34 @@ Location 3: 2969 Wilshire Blvd, Los Angeles, CA 90010
   ]
 }
 ```
+
+### Example 3 — sub_5 (mailing address vs property address)
+
+**Why this example exists:** Insurance application forms often have two address sections: the applicant's mailing address (LLC owner contact) and the building/location being insured. The LLM must extract only the latter.
+
+**Input (document excerpt):**
+```
+DOCUMENT: Attachment.pdf [Page 1]
+SECTION I – APPLICANT
+Mailing Address: 10341 Vanalde n Ave
+City: Porter Ranch  State: CA  ZIP: 91326
+
+SECTION II - BUILDING INFORMATION (if different from above)
+Location #: 14950 Burbank Blvd, Sherman Oaks, CA. 91411
+```
+
+**Expected output:**
+```json
+{
+  "property_addresses": [
+    {"address": "14950 Burbank Blvd, Sherman Oaks, CA 91411", "confidence": 0.96, "provenance": {"doc_name": "Attachment.pdf", "page": 1, "snippet": "Location #: 14950 Burbank Blvd, Sherman Oaks, CA. 91411"}}
+  ]
+}
+```
+
+The mailing address `10341 Vanalde n Ave, Porter Ranch` must NOT appear — it is the owner's contact address, not an insured property.
+
+---
 
 ## Key Design Decisions
 

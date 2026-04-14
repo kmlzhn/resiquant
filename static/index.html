@@ -379,6 +379,67 @@ pre.json-code {
 .addr-v { font-size:12px; color:var(--text); flex:1; }
 .addr-c { font-size:11px; color:var(--text-3); flex-shrink:0; }
 
+/* ── Inline editing ─────────────────────────────────────────────────────── */
+.edit-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; padding:0;
+  border:none; border-radius:var(--r-xs);
+  background:transparent; color:var(--text-3); cursor:pointer;
+  opacity:0; transition:opacity 0.15s, background 0.15s;
+  vertical-align:middle; margin-left:5px; flex-shrink:0;
+}
+.f-row:hover .edit-btn { opacity:1; }
+.edit-btn:hover { background:var(--surface-3); color:var(--text); }
+
+.f-val-wrap { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+.f-edit-mode { margin-top:6px; }
+.field-input {
+  width:100%; padding:7px 10px; font-family:var(--font); font-size:13px;
+  border:1px solid var(--border-mid); border-radius:var(--r-sm);
+  background:var(--bg); color:var(--text); outline:none;
+  transition:border-color 0.15s; letter-spacing:var(--ls);
+}
+.field-input:focus { border-color:rgba(0,0,0,0.35); }
+.edit-btns { display:flex; gap:6px; margin-top:7px; align-items:center; }
+.save-correction-btn {
+  padding:5px 12px; font-family:var(--font); font-size:12px; font-weight:500;
+  border:none; border-radius:var(--r-sm); cursor:pointer;
+  background:#0c0c0c; color:#fff; transition:background 0.14s;
+}
+.save-correction-btn:hover { background:#1f1f1f; }
+.cancel-edit-btn {
+  padding:5px 10px; font-family:var(--font); font-size:12px; font-weight:500;
+  border:1px solid var(--border-mid); border-radius:var(--r-sm);
+  background:transparent; color:var(--text-3); cursor:pointer; transition:all 0.14s;
+}
+.cancel-edit-btn:hover { border-color:var(--border-high); color:var(--text); }
+.val-feedback { margin-top:5px; font-size:11px; min-height:15px; }
+.val-ok  { color:#1a7f37; }
+.val-err { color:var(--red); }
+
+.correction-badge {
+  display:inline-flex; align-items:center;
+  font-size:9px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+  padding:1px 6px; border-radius:20px;
+  background:rgba(200,125,0,0.1); border:1px solid rgba(200,125,0,0.25); color:var(--amber);
+  vertical-align:middle;
+}
+
+/* Address row edit */
+.addr-action-btns { display:flex; gap:3px; flex-shrink:0; margin-left:4px; }
+.addr-edit-btn, .addr-del-btn {
+  display:flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border:none; border-radius:var(--r-xs);
+  background:transparent; cursor:pointer; color:var(--text-3);
+  opacity:0; transition:opacity 0.15s, background 0.15s; font-size:11px; padding:0;
+}
+.addr-row:hover .addr-edit-btn,
+.addr-row:hover .addr-del-btn { opacity:1; }
+.addr-edit-btn:hover { background:var(--surface-3); color:var(--text); }
+.addr-del-btn:hover  { background:rgba(217,48,37,0.08); color:var(--red); }
+.addr-display { flex:1; min-width:0; }
+.addr-edit-mode { display:none; flex:1; min-width:0; padding:2px 0; }
+
 .err-row {
   display:flex; align-items:flex-start; gap:8px;
   padding:10px 14px;
@@ -607,7 +668,7 @@ function setView(v) {
 
 function renderCardView(data, col) {
   if (data.submissions.length === 1) {
-    col.innerHTML = renderFullResult(data.submissions[0].result);
+    col.innerHTML = renderFullResult(data.submissions[0].result, 0);
   } else {
     col.innerHTML = data.submissions.map((s, i) => renderSubCard(s, i)).join('');
   }
@@ -657,6 +718,15 @@ function toCleanJSON(sub, total) {
     brokerage:                  d.brokerage?.value ?? null,
     complete_brokerage_address: d.complete_brokerage_address?.value ?? null,
     property_addresses:         (d.property_addresses || []).map(a => a.address),
+    corrections: (() => {
+      const c = {};
+      ['broker_name','broker_email','brokerage','complete_brokerage_address'].forEach(k => {
+        if (d[k]?._manual) c[k] = d[k].value;
+      });
+      const addrC = (d.property_addresses||[]).filter(a => a._manual).map(a => a.address);
+      if (addrC.length) c.property_addresses = addrC;
+      return Object.keys(c).length ? c : undefined;
+    })(),
     confidence:                 avgConf,
     provenance:                 prov,
     meta: {
@@ -706,7 +776,7 @@ function copyJSON() {
 }
 
 // ── Render: single full result ─────────────────────────────────────────────
-function renderFullResult(d) {
+function renderFullResult(d, subIdx) {
   const lat  = d.latency_ms != null ? `${Math.round(d.latency_ms)}ms` : null;
   const tok  = d.token_usage ? `${d.token_usage.total_tokens.toLocaleString()} tok` : null;
   const cost = d.token_usage?.estimated_cost_usd != null ? `$${d.token_usage.estimated_cost_usd.toFixed(4)}` : null;
@@ -724,14 +794,14 @@ function renderFullResult(d) {
     ${errs ? `<div class="rsec">${errs}</div>` : ''}
     <div class="rsec">
       <div class="sec-label">Broker</div>
-      ${fRow(d.broker_name,  'Name')}
-      ${fRow(d.broker_email, 'Email')}
-      ${fRow(d.brokerage,    'Brokerage')}
-      ${fRow(d.complete_brokerage_address, 'Address')}
+      ${fRow(d.broker_name,  'Name',      subIdx, 'broker_name')}
+      ${fRow(d.broker_email, 'Email',     subIdx, 'broker_email')}
+      ${fRow(d.brokerage,    'Brokerage', subIdx, 'brokerage')}
+      ${fRow(d.complete_brokerage_address, 'Address', subIdx, 'complete_brokerage_address')}
     </div>
     <div class="rsec">
       <div class="sec-label">Properties (${d.property_addresses?.length||0})</div>
-      ${addrList(d.property_addresses)}
+      ${addrList(d.property_addresses, subIdx)}
     </div>
   </div>`;
 }
@@ -754,31 +824,51 @@ function renderSubCard(sub, i) {
     </div>
     <div class="rsec">
       <div class="sec-label">Broker</div>
-      ${fRow(d.broker_name,  'Name')}
-      ${fRow(d.broker_email, 'Email')}
-      ${fRow(d.brokerage,    'Brokerage')}
-      ${fRow(d.complete_brokerage_address, 'Address')}
+      ${fRow(d.broker_name,  'Name',      i, 'broker_name')}
+      ${fRow(d.broker_email, 'Email',     i, 'broker_email')}
+      ${fRow(d.brokerage,    'Brokerage', i, 'brokerage')}
+      ${fRow(d.complete_brokerage_address, 'Address', i, 'complete_brokerage_address')}
     </div>
     <div class="rsec">
       <div class="sec-label">Properties (${d.property_addresses?.length||0})</div>
-      ${addrList(d.property_addresses)}
+      ${addrList(d.property_addresses, i)}
     </div>
   </div>`;
 }
 
 // ── Field row ──────────────────────────────────────────────────────────────
-function fRow(field, label) {
+function fRow(field, label, subIdx, fieldKey) {
   if (!field) return '';
-  const v   = field.value;
-  const c   = field.confidence ?? 0;
-  const p   = field.provenance;
-  const cls = c >= .8 ? 'c-hi' : c >= .5 ? 'c-md' : 'c-lo';
-  const pct = Math.round(c * 100);
-  const provHTML = p ? `<span class="prov">${esc(p.doc_name)}${p.page!=null?`<span class="prov-sep"> · </span>p${p.page}`:''}${p.snippet?`<span class="prov-sep"> · </span>${esc(p.snippet.slice(0,36))}…`:''}</span>` : '';
-  return `<div class="f-row">
+  const v      = field.value;
+  const c      = field.confidence ?? 0;
+  const p      = field.provenance;
+  const manual = field._manual;
+  const cls    = c >= .8 ? 'c-hi' : c >= .5 ? 'c-md' : 'c-lo';
+  const pct    = Math.round(c * 100);
+  const rowId  = `field-${subIdx}-${fieldKey}`;
+  const provHTML = p
+    ? `<span class="prov">${esc(p.doc_name)}${p.page!=null?`<span class="prov-sep"> · </span>p${p.page}`:''}${p.snippet?`<span class="prov-sep"> · </span>${esc(p.snippet.slice(0,36))}…`:''}</span>`
+    : '';
+  const pencilSVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+
+  return `<div class="f-row" id="${rowId}" data-sub-idx="${subIdx}" data-field-key="${fieldKey}">
     <div class="f-left">
-      <div class="f-sub">${label}</div>
-      ${v ? `<div class="f-val">${esc(v)}</div>${provHTML}` : '<div class="f-nil">—</div>'}
+      <div class="f-sub">${label}${manual ? ' <span class="correction-badge">Corrected</span>' : ''}</div>
+      <div class="f-display">
+        <div class="f-val-wrap">
+          ${v ? `<span class="f-val">${esc(v)}</span>` : '<span class="f-nil">—</span>'}
+          <button class="edit-btn" onclick="startFieldEdit('${rowId}')" title="Edit value">${pencilSVG}</button>
+        </div>
+        ${v ? provHTML : ''}
+      </div>
+      <div class="f-edit-mode" style="display:none">
+        <input class="field-input" id="${rowId}-inp" value="${esc(v ?? '')}" placeholder="Enter value…"/>
+        <div class="edit-btns">
+          <button class="save-correction-btn" onclick="saveFieldCorrection('${rowId}')">Save correction</button>
+          <button class="cancel-edit-btn" onclick="cancelFieldEdit('${rowId}')">Cancel</button>
+        </div>
+        <div class="val-feedback" id="${rowId}-fb"></div>
+      </div>
     </div>
     <div class="conf-wrap ${cls}">
       <div class="conf-track"><div class="conf-fill" style="width:${pct}%"></div></div>
@@ -788,14 +878,121 @@ function fRow(field, label) {
 }
 
 // ── Address list ───────────────────────────────────────────────────────────
-function addrList(addrs) {
+function addrList(addrs, subIdx) {
   if (!addrs || !addrs.length) return '<div style="font-size:12px;color:var(--text-3)">No addresses found</div>';
-  return `<div class="addr-list">${addrs.map((a,i) => `
-    <div class="addr-row">
+  const pencilSVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const trashSVG  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+  return `<div class="addr-list">${addrs.map((a, i) => {
+    const rowId = `addr-${subIdx}-${i}`;
+    return `<div class="addr-row" id="${rowId}" data-sub-idx="${subIdx}" data-addr-idx="${i}">
       <div class="addr-n">${i+1}</div>
-      <div class="addr-v">${esc(a.address)}</div>
+      <div class="addr-display">
+        <div class="addr-v">${esc(a.address)}${a._manual ? ' <span class="correction-badge">Corrected</span>' : ''}</div>
+      </div>
+      <div class="addr-edit-mode">
+        <input class="field-input" id="${rowId}-inp" value="${esc(a.address)}"/>
+        <div class="edit-btns">
+          <button class="save-correction-btn" onclick="saveAddrEdit('${rowId}')">Save</button>
+          <button class="cancel-edit-btn" onclick="cancelAddrEdit('${rowId}')">Cancel</button>
+        </div>
+      </div>
       <div class="addr-c">${Math.round(a.confidence*100)}%</div>
-    </div>`).join('')}</div>`;
+      <div class="addr-action-btns">
+        <button class="addr-edit-btn" onclick="startAddrEdit('${rowId}')" title="Edit">${pencilSVG}</button>
+        <button class="addr-del-btn" onclick="deleteAddr(${subIdx},${i})" title="Remove">${trashSVG}</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Inline editing: re-render helper ───────────────────────────────────────
+function rerenderCards() {
+  if (!lastData) return;
+  const col = document.getElementById('results-col');
+  renderCardView(lastData, col);
+}
+
+// ── Inline editing: field rows ─────────────────────────────────────────────
+function startFieldEdit(rowId) {
+  const row = document.getElementById(rowId);
+  row.querySelector('.f-display').style.display = 'none';
+  row.querySelector('.f-edit-mode').style.display = '';
+  const inp = document.getElementById(rowId + '-inp');
+  inp.focus(); inp.select();
+}
+
+function cancelFieldEdit(rowId) {
+  const row = document.getElementById(rowId);
+  row.querySelector('.f-display').style.display = '';
+  row.querySelector('.f-edit-mode').style.display = 'none';
+  document.getElementById(rowId + '-fb').innerHTML = '';
+}
+
+async function saveFieldCorrection(rowId) {
+  const row      = document.getElementById(rowId);
+  const subIdx   = parseInt(row.dataset.subIdx);
+  const fieldKey = row.dataset.fieldKey;
+  const newVal   = document.getElementById(rowId + '-inp').value.trim();
+  const fbEl     = document.getElementById(rowId + '-fb');
+
+  // Mutate lastData in place so JSON view stays in sync
+  const fieldObj = lastData.submissions[subIdx].result[fieldKey];
+  fieldObj.value   = newVal || null;
+  fieldObj._manual = true;
+
+  // Run server-side validation for applicable fields
+  const needsValidation = fieldKey === 'broker_email' || fieldKey === 'complete_brokerage_address';
+  if (needsValidation && newVal) {
+    try {
+      const r = await fetch('/validate-field', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: fieldKey, value: newVal }),
+      });
+      const result = await r.json();
+      fbEl.innerHTML = result.valid
+        ? '<span class="val-ok">✓ Valid</span>'
+        : `<span class="val-err">⚠ ${esc(result.errors.join('; '))}</span>`;
+      // Re-render after showing feedback briefly
+      setTimeout(rerenderCards, 1100);
+      return;
+    } catch (_) { /* fall through */ }
+  }
+  rerenderCards();
+}
+
+// ── Inline editing: address rows ───────────────────────────────────────────
+function startAddrEdit(rowId) {
+  const row = document.getElementById(rowId);
+  row.querySelector('.addr-display').style.display = 'none';
+  row.querySelector('.addr-edit-mode').style.display = '';
+  const inp = document.getElementById(rowId + '-inp');
+  inp.focus(); inp.select();
+}
+
+function cancelAddrEdit(rowId) {
+  const row = document.getElementById(rowId);
+  row.querySelector('.addr-display').style.display = '';
+  row.querySelector('.addr-edit-mode').style.display = 'none';
+}
+
+function saveAddrEdit(rowId) {
+  const row     = document.getElementById(rowId);
+  const subIdx  = parseInt(row.dataset.subIdx);
+  const addrIdx = parseInt(row.dataset.addrIdx);
+  const newVal  = document.getElementById(rowId + '-inp').value.trim();
+  if (newVal) {
+    const a = lastData.submissions[subIdx].result.property_addresses[addrIdx];
+    a.address = newVal;
+    a._manual = true;
+  }
+  rerenderCards();
+}
+
+function deleteAddr(subIdx, addrIdx) {
+  lastData.submissions[subIdx].result.property_addresses.splice(addrIdx, 1);
+  rerenderCards();
 }
 
 // ── Scroll & reveal ────────────────────────────────────────────────────────
