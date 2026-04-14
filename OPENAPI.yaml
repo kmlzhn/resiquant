@@ -1,0 +1,219 @@
+openapi: 3.1.0
+info:
+  title: ResiQuant Submission Extractor
+  version: 1.0.0
+  description: Extracts broker & property data from insurance submission emails and attachments.
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /extract:
+    post:
+      summary: Extract broker & property data
+      description: Upload email and attachment files. Returns structured JSON with broker info and property addresses.
+      operationId: extract
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required: [files]
+      responses:
+        "200":
+          description: Extraction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionResult"
+        "400":
+          description: No files uploaded or all files empty
+        "500":
+          description: Internal server error
+
+  /batch-extract:
+    post:
+      summary: Extract from multiple submissions at once
+      description: |
+        Two modes:
+        - **ZIP mode**: upload one .zip per submission. Each ZIP contains the email PDF + attachments.
+        - **Multi-group mode**: upload all files flat; the service auto-detects email files and groups attachments with them.
+        Returns a list of extraction results, one per submission.
+      operationId: batchExtract
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required: [files]
+      responses:
+        "200":
+          description: Batch extraction results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchExtractionResult"
+        "400":
+          description: No files uploaded or no email files detected
+
+  /metrics:
+    get:
+      summary: Cost & latency metrics
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Aggregate metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsResponse"
+
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+components:
+  schemas:
+    Provenance:
+      type: object
+      properties:
+        doc_name:
+          type: string
+        page:
+          type: integer
+          nullable: true
+        snippet:
+          type: string
+
+    FieldResult:
+      type: object
+      properties:
+        value:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+          nullable: true
+
+    PropertyAddress:
+      type: object
+      properties:
+        address:
+          type: string
+        confidence:
+          type: number
+          format: float
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+          nullable: true
+
+    TokenUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        estimated_cost_usd:
+          type: number
+          nullable: true
+
+    ExtractionResult:
+      type: object
+      properties:
+        request_id:
+          type: string
+        cache_hit:
+          type: boolean
+        broker_name:
+          $ref: "#/components/schemas/FieldResult"
+        broker_email:
+          $ref: "#/components/schemas/FieldResult"
+        brokerage:
+          $ref: "#/components/schemas/FieldResult"
+        complete_brokerage_address:
+          $ref: "#/components/schemas/FieldResult"
+        property_addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyAddress"
+        latency_ms:
+          type: number
+        token_usage:
+          $ref: "#/components/schemas/TokenUsage"
+          nullable: true
+        errors:
+          type: array
+          items:
+            type: string
+
+    SubmissionResult:
+      type: object
+      properties:
+        submission_id:
+          type: string
+        result:
+          $ref: "#/components/schemas/ExtractionResult"
+
+    BatchExtractionResult:
+      type: object
+      properties:
+        submissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionResult"
+        total:
+          type: integer
+
+    MetricsResponse:
+      type: object
+      properties:
+        total_requests:
+          type: integer
+        cache_hits:
+          type: integer
+        cache_misses:
+          type: integer
+        total_tokens_used:
+          type: integer
+        total_latency_ms:
+          type: number
+        avg_latency_ms:
+          type: number
+        errors_by_type:
+          type: object
+          additionalProperties:
+            type: integer

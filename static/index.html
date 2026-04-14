@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ResiQuant — Submission Extractor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f6f9; color: #1a1a2e; min-height: 100vh; }
+  header { background: #1a1a2e; color: white; padding: 18px 32px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header span { font-size: 0.85rem; color: #aab; }
+  main { max-width: 960px; margin: 36px auto; padding: 0 20px; }
+  .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 24px; }
+  h2 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+  h3 { font-size: 0.9rem; font-weight: 600; color: #1a1a2e; }
+
+  /* Mode tabs */
+  .mode-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #e8eaf0; }
+  .mode-tab { background: none; border: none; padding: 10px 24px; font-size: 0.95rem; cursor: pointer; color: #778; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .mode-tab.active { color: #4f6ef7; border-bottom-color: #4f6ef7; font-weight: 600; }
+
+  /* Drop zone */
+  .drop-zone { border: 2px dashed #c5cdd8; border-radius: 8px; padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: #667; }
+  .drop-zone.drag-over { border-color: #4f6ef7; background: #f0f3ff; }
+  .drop-zone input { display: none; }
+  .drop-zone p { margin-top: 6px; font-size: 0.8rem; }
+  .file-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .file-chip { background: #eef0f8; border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; display: flex; align-items: center; gap: 5px; }
+  .file-chip button { background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem; line-height: 1; }
+
+  /* Submission groups */
+  .sub-group { border: 1px solid #e2e5ef; border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
+  .sub-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .sub-group-label { font-size: 0.85rem; font-weight: 600; color: #445; }
+  .btn-remove { background: none; border: 1px solid #fcc; border-radius: 6px; color: #c44; font-size: 0.78rem; padding: 3px 10px; cursor: pointer; }
+  .btn-remove:hover { background: #fff0f0; }
+  .btn-add { background: none; border: 1px dashed #4f6ef7; border-radius: 8px; color: #4f6ef7; font-size: 0.85rem; font-weight: 600; padding: 10px; cursor: pointer; width: 100%; margin-bottom: 16px; transition: background 0.15s; }
+  .btn-add:hover { background: #f0f3ff; }
+
+  /* Submit button */
+  .btn { background: #4f6ef7; color: white; border: none; border-radius: 8px; padding: 11px 26px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn:hover { background: #3a57e8; }
+  .btn:disabled { background: #b0b8d0; cursor: not-allowed; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff4; border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } }
+  .field-card { background: #f8f9fc; border-radius: 8px; padding: 14px; }
+  .field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #778; margin-bottom: 3px; }
+  .field-value { font-size: 0.95rem; font-weight: 600; color: #1a1a2e; word-break: break-all; }
+  .field-null { color: #bbb; font-style: italic; font-weight: 400; }
+  .confidence { display: inline-block; margin-top: 5px; font-size: 0.72rem; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
+  .conf-high { background: #d4f5e0; color: #1a7a40; }
+  .conf-mid  { background: #fff3cc; color: #8a6300; }
+  .conf-low  { background: #fde8e8; color: #b33; }
+  .provenance { margin-top: 6px; font-size: 0.72rem; color: #778; }
+  .provenance b { color: #445; }
+  .addresses-list { list-style: none; }
+  .addresses-list li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; font-size: 0.9rem; }
+  .addresses-list li:last-child { border-bottom: none; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: #778; margin-bottom: 14px; }
+  .errors { background: #fff4f4; border: 1px solid #fcc; border-radius: 8px; padding: 12px; margin-top: 12px; }
+  .errors li { font-size: 0.82rem; color: #c33; margin-top: 3px; }
+  pre { background: #1a1a2e; color: #c5d0e8; border-radius: 8px; padding: 16px; font-size: 0.76rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .view-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .view-tab { background: none; border: 1px solid #dde; border-radius: 6px; padding: 4px 14px; font-size: 0.82rem; cursor: pointer; color: #667; }
+  .view-tab.active { background: #4f6ef7; color: white; border-color: #4f6ef7; font-weight: 600; }
+
+  /* Batch results */
+  .batch-result-card { border: 1px solid #e2e5ef; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+  .batch-result-header { background: #f0f3ff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e5ef; }
+  .batch-result-header h3 { font-size: 0.88rem; color: #334; }
+  .batch-result-body { padding: 18px; }
+
+  .hint { font-size: 0.78rem; color: #889; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ResiQuant Submission Extractor</h1>
+  <span>Broker &amp; property data from insurance emails</span>
+</header>
+<main>
+  <!-- Mode switcher -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('single')">Single Submission</button>
+    <button class="mode-tab" onclick="switchMode('batch')">Batch (Multiple Submissions)</button>
+  </div>
+
+  <!-- ── SINGLE MODE ── -->
+  <div id="singleMode">
+    <div class="card">
+      <h2>Upload Submission Files</h2>
+      <div class="drop-zone" id="singleDrop">
+        <input type="file" id="singleInput" multiple accept=".pdf,.xlsx,.xls,.docx"/>
+        <div>&#128196; Drop files here or <u onclick="document.getElementById('singleInput').click()" style="cursor:pointer">browse</u></div>
+        <p>Email PDF + attachments (PDF, XLSX, XLS, DOCX)</p>
+      </div>
+      <div class="file-list" id="singleFileList"></div>
+      <div style="margin-top:16px">
+        <button class="btn" id="singleBtn" disabled onclick="runSingle()">Extract</button>
+      </div>
+    </div>
+    <div class="card" id="singleResult" style="display:none">
+      <h2>Extraction Result</h2>
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="showViewTab('singleVisual','singleJson',0)">Visual</button>
+        <button class="view-tab" onclick="showViewTab('singleVisual','singleJson',1)">Raw JSON</button>
+      </div>
+      <div id="singleVisual"></div>
+      <pre id="singleJson" style="display:none"></pre>
+    </div>
+  </div>
+
+  <!-- ── BATCH MODE ── -->
+  <div id="batchMode" style="display:none">
+    <div class="card">
+      <h2>Upload Multiple Submissions</h2>
+      <p class="hint" style="margin-bottom:14px">Add one group per submission. Each group should contain the email PDF + its attachments.</p>
+      <div id="subGroups"></div>
+      <button class="btn-add" onclick="addGroup()">+ Add Submission</button>
+      <div>
+        <button class="btn" id="batchBtn" disabled onclick="runBatch()">Extract All</button>
+      </div>
+    </div>
+    <div id="batchResults"></div>
+  </div>
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let singleFiles = [];
+let groups = [];  // [{id, files:[]}]
+let groupCounter = 0;
+
+// ── Mode switch ────────────────────────────────────────────────────────────
+function switchMode(mode) {
+  document.querySelectorAll('.mode-tab').forEach((t,i) => t.classList.toggle('active', (mode==='single'&&i===0)||(mode==='batch'&&i===1)));
+  document.getElementById('singleMode').style.display = mode==='single' ? 'block' : 'none';
+  document.getElementById('batchMode').style.display  = mode==='batch'  ? 'block' : 'none';
+}
+
+// ── Single mode ────────────────────────────────────────────────────────────
+const singleDrop  = document.getElementById('singleDrop');
+const singleInput = document.getElementById('singleInput');
+
+singleDrop.addEventListener('click', e => { if (e.target.tagName!=='U') singleInput.click(); });
+singleDrop.addEventListener('dragover', e => { e.preventDefault(); singleDrop.classList.add('drag-over'); });
+singleDrop.addEventListener('dragleave', () => singleDrop.classList.remove('drag-over'));
+singleDrop.addEventListener('drop', e => { e.preventDefault(); singleDrop.classList.remove('drag-over'); addSingleFiles([...e.dataTransfer.files]); });
+singleInput.addEventListener('change', () => { addSingleFiles([...singleInput.files]); singleInput.value=''; });
+
+function addSingleFiles(files) {
+  files.forEach(f => { if (!singleFiles.find(x=>x.name===f.name)) singleFiles.push(f); });
+  renderSingleFiles();
+}
+function removeSingleFile(name) { singleFiles = singleFiles.filter(f=>f.name!==name); renderSingleFiles(); }
+function renderSingleFiles() {
+  document.getElementById('singleFileList').innerHTML = singleFiles.map(f =>
+    `<div class="file-chip">&#128196; ${f.name} <button onclick="removeSingleFile('${f.name}')">&times;</button></div>`
+  ).join('');
+  document.getElementById('singleBtn').disabled = singleFiles.length===0;
+}
+
+async function runSingle() {
+  const btn = document.getElementById('singleBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Extracting…';
+  document.getElementById('singleResult').style.display = 'none';
+  const fd = new FormData();
+  singleFiles.forEach(f => fd.append('files', f));
+  try {
+    const res = await fetch('/extract', {method:'POST', body:fd});
+    const data = await res.json();
+    renderSingleResult(data);
+  } catch(e) { alert('Request failed: '+e.message); }
+  finally { btn.disabled=false; btn.innerHTML='Extract'; }
+}
+
+function renderSingleResult(data) {
+  document.getElementById('singleVisual').innerHTML = buildResultHTML(data);
+  document.getElementById('singleJson').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('singleResult').style.display = 'block';
+}
+
+// ── Batch mode ─────────────────────────────────────────────────────────────
+function addGroup() {
+  const id = ++groupCounter;
+  groups.push({id, files:[]});
+
+  const div = document.createElement('div');
+  div.className = 'sub-group';
+  div.id = `group_${id}`;
+  div.innerHTML = `
+    <div class="sub-group-header">
+      <span class="sub-group-label">Submission ${id}</span>
+      <button class="btn-remove" onclick="removeGroup(${id})">Remove</button>
+    </div>
+    <div class="drop-zone" id="drop_${id}" style="padding:18px">
+      <input type="file" id="input_${id}" multiple accept=".pdf,.xlsx,.xls,.docx"/>
+      <div style="font-size:0.85rem">&#128196; Drop files or <u onclick="document.getElementById('input_${id}').click()" style="cursor:pointer">browse</u></div>
+    </div>
+    <div class="file-list" id="list_${id}" style="margin-top:8px"></div>`;
+  document.getElementById('subGroups').appendChild(div);
+
+  // Wire events
+  const drop = document.getElementById(`drop_${id}`);
+  const input = document.getElementById(`input_${id}`);
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag-over'); addGroupFiles(id, [...e.dataTransfer.files]); });
+  input.addEventListener('change', () => { addGroupFiles(id, [...input.files]); input.value=''; });
+
+  updateBatchBtn();
+}
+
+function removeGroup(id) {
+  groups = groups.filter(g=>g.id!==id);
+  document.getElementById(`group_${id}`)?.remove();
+  updateBatchBtn();
+}
+
+function addGroupFiles(id, files) {
+  const g = groups.find(g=>g.id===id);
+  if (!g) return;
+  files.forEach(f => { if (!g.files.find(x=>x.name===f.name)) g.files.push(f); });
+  renderGroupFiles(id);
+}
+
+function removeGroupFile(groupId, fname) {
+  const g = groups.find(g=>g.id===groupId);
+  if (g) g.files = g.files.filter(f=>f.name!==fname);
+  renderGroupFiles(groupId);
+}
+
+function renderGroupFiles(id) {
+  const g = groups.find(g=>g.id===id);
+  if (!g) return;
+  document.getElementById(`list_${id}`).innerHTML = g.files.map(f =>
+    `<div class="file-chip">&#128196; ${f.name} <button onclick="removeGroupFile(${id},'${f.name}')">&times;</button></div>`
+  ).join('');
+  updateBatchBtn();
+}
+
+function updateBatchBtn() {
+  const hasFiles = groups.some(g=>g.files.length>0);
+  document.getElementById('batchBtn').disabled = !hasFiles || groups.length===0;
+}
+
+async function runBatch() {
+  const btn = document.getElementById('batchBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Extracting all…';
+  document.getElementById('batchResults').innerHTML='';
+
+  // Run all submissions in parallel
+  const promises = groups.filter(g=>g.files.length>0).map(async g => {
+    const fd = new FormData();
+    g.files.forEach(f => fd.append('files', f));
+    try {
+      const res = await fetch('/extract', {method:'POST', body:fd});
+      return {id: `Submission ${g.id}`, data: await res.json(), ok: res.ok};
+    } catch(e) {
+      return {id: `Submission ${g.id}`, data: null, ok: false, error: e.message};
+    }
+  });
+
+  const results = await Promise.all(promises);
+  renderBatchResults(results);
+  btn.disabled=false; btn.innerHTML='Extract All';
+}
+
+function renderBatchResults(results) {
+  const container = document.getElementById('batchResults');
+  container.innerHTML = '';
+  results.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'batch-result-card';
+    if (!r.ok || !r.data) {
+      card.innerHTML = `
+        <div class="batch-result-header"><h3>&#128196; ${r.id}</h3><span style="color:#c44;font-size:0.8rem">Failed</span></div>
+        <div class="batch-result-body"><div class="errors"><ul><li>${r.error || 'Unknown error'}</li></ul></div></div>`;
+    } else {
+      const d = r.data;
+      const uid = `batch_${i}`;
+      card.innerHTML = `
+        <div class="batch-result-header">
+          <h3>&#128196; ${r.id}</h3>
+          <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:#778">
+            ${d.cache_hit ? '&#9889; cached' : '&#128260; LLM'}
+            &nbsp;&#9201; ${d.latency_ms}ms
+            ${d.token_usage ? `&nbsp;&#128200; ${d.token_usage.total_tokens} tokens ($${d.token_usage.estimated_cost_usd})` : ''}
+          </div>
+        </div>
+        <div class="batch-result-body">
+          <div class="view-tabs">
+            <button class="view-tab active" onclick="showViewTab('${uid}_visual','${uid}_json',0)">Visual</button>
+            <button class="view-tab" onclick="showViewTab('${uid}_visual','${uid}_json',1)">Raw JSON</button>
+          </div>
+          <div id="${uid}_visual">${buildResultHTML(d)}</div>
+          <pre id="${uid}_json" style="display:none">${JSON.stringify(d,null,2)}</pre>
+        </div>`;
+    }
+    container.appendChild(card);
+  });
+}
+
+// ── Shared result rendering ────────────────────────────────────────────────
+function confClass(c) { return c>=0.8?'conf-high':c>=0.5?'conf-mid':'conf-low'; }
+function confLabel(c) { return (c*100).toFixed(0)+'%'; }
+
+function fieldCard(label, field) {
+  const val = field.value
+    ? `<div class="field-value">${field.value}</div>`
+    : `<div class="field-value field-null">not found</div>`;
+  const conf = `<span class="confidence ${confClass(field.confidence)}">${confLabel(field.confidence)} confidence</span>`;
+  const prov = field.provenance
+    ? `<div class="provenance"><b>${field.provenance.doc_name}</b>${field.provenance.page?` p.${field.provenance.page}`:''} — "${field.provenance.snippet}"</div>`
+    : '';
+  return `<div class="field-card"><div class="field-label">${label}</div>${val}${conf}${prov}</div>`;
+}
+
+function buildResultHTML(d) {
+  const fields = `<div class="result-grid">
+    ${fieldCard('Broker Name', d.broker_name)}
+    ${fieldCard('Broker Email', d.broker_email)}
+    ${fieldCard('Brokerage', d.brokerage)}
+    ${fieldCard('Brokerage Address', d.complete_brokerage_address)}
+  </div>`;
+
+  const addrs = d.property_addresses.length
+    ? `<div style="margin-top:14px">
+        <div class="field-label" style="margin-bottom:8px">Property Addresses (${d.property_addresses.length})</div>
+        <ul class="addresses-list">${d.property_addresses.map(a =>
+          `<li>
+            <div>
+              <div style="font-weight:500">${a.address}</div>
+              ${a.provenance?`<div class="provenance"><b>${a.provenance.doc_name}</b> — "${a.provenance.snippet}"</div>`:''}
+            </div>
+            <span class="confidence ${confClass(a.confidence)}">${confLabel(a.confidence)}</span>
+          </li>`).join('')}
+        </ul></div>`
+    : `<div style="color:#aaa;margin-top:10px;font-size:0.82rem">No property addresses found.</div>`;
+
+  const errs = d.errors&&d.errors.length
+    ? `<div class="errors" style="margin-top:12px"><b>Issues:</b><ul>${d.errors.map(e=>`<li>${e}</li>`).join('')}</ul></div>`
+    : '';
+
+  return fields + addrs + errs;
+}
+
+function showViewTab(visId, jsonId, idx) {
+  const vis = document.getElementById(visId);
+  const json = document.getElementById(jsonId);
+  if (!vis || !json) return;
+  const tabs = vis.closest('.batch-result-body, .card')?.querySelectorAll('.view-tab') ||
+               document.querySelectorAll(`#${visId}`)[0]?.parentElement?.querySelectorAll('.view-tab');
+  vis.parentElement.querySelectorAll('.view-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  vis.style.display  = idx===0 ? 'block' : 'none';
+  json.style.display = idx===1 ? 'block' : 'none';
+}
+
+// Start with one group in batch mode
+addGroup();
+</script>
+</body>
+</html>

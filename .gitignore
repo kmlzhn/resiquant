@@ -1,0 +1,14 @@
+# Secrets — never commit real keys
+.env
+
+# Cache files
+cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
