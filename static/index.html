@@ -4,364 +4,647 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ResiQuant — Submission Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f6f9; color: #1a1a2e; min-height: 100vh; }
-  header { background: #1a1a2e; color: white; padding: 18px 32px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 1.3rem; font-weight: 600; }
-  header span { font-size: 0.85rem; color: #aab; }
-  main { max-width: 960px; margin: 36px auto; padding: 0 20px; }
-  .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 24px; }
-  h2 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
-  h3 { font-size: 0.9rem; font-weight: 600; color: #1a1a2e; }
+/* ── Reset & Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:          #0d0d0d;
+  --surface:     #141414;
+  --surface2:    #1a1a1a;
+  --border:      rgba(255,255,255,0.08);
+  --border-hover:rgba(255,255,255,0.16);
+  --accent:      #0099ff;
+  --accent-dim:  rgba(0,153,255,0.12);
+  --accent-glow: rgba(0,153,255,0.25);
+  --green:       #83ca16;
+  --green-dim:   rgba(131,202,22,0.12);
+  --red:         #fa4c59;
+  --red-dim:     rgba(250,76,89,0.12);
+  --amber:       #f5a623;
+  --amber-dim:   rgba(245,166,35,0.12);
+  --text:        #f0f0f0;
+  --text-2:      #a0a0a0;
+  --text-3:      #606060;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --font-body:   'Inter', sans-serif;
+  --font-display:'DM Sans', sans-serif;
+}
+html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
+a { color: inherit; text-decoration: none; }
 
-  /* Mode tabs */
-  .mode-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #e8eaf0; }
-  .mode-tab { background: none; border: none; padding: 10px 24px; font-size: 0.95rem; cursor: pointer; color: #778; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
-  .mode-tab.active { color: #4f6ef7; border-bottom-color: #4f6ef7; font-weight: 600; }
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 
-  /* Drop zone */
-  .drop-zone { border: 2px dashed #c5cdd8; border-radius: 8px; padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: #667; }
-  .drop-zone.drag-over { border-color: #4f6ef7; background: #f0f3ff; }
-  .drop-zone input { display: none; }
-  .drop-zone p { margin-top: 6px; font-size: 0.8rem; }
-  .file-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
-  .file-chip { background: #eef0f8; border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; display: flex; align-items: center; gap: 5px; }
-  .file-chip button { background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem; line-height: 1; }
+/* ── Nav ──────────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  background: rgba(13,13,13,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; }
+.nav-logo-mark {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 600; font-size: 13px; color: #fff; letter-spacing: -0.5px;
+}
+.nav-logo-text { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
+.nav-badge {
+  font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px;
+  background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,153,255,0.2);
+  letter-spacing: 0.03em;
+}
+.nav-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--text-2); }
+.nav-right a:hover { color: var(--text); }
 
-  /* Submission groups */
-  .sub-group { border: 1px solid #e2e5ef; border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
-  .sub-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .sub-group-label { font-size: 0.85rem; font-weight: 600; color: #445; }
-  .btn-remove { background: none; border: 1px solid #fcc; border-radius: 6px; color: #c44; font-size: 0.78rem; padding: 3px 10px; cursor: pointer; }
-  .btn-remove:hover { background: #fff0f0; }
-  .btn-add { background: none; border: 1px dashed #4f6ef7; border-radius: 8px; color: #4f6ef7; font-size: 0.85rem; font-weight: 600; padding: 10px; cursor: pointer; width: 100%; margin-bottom: 16px; transition: background 0.15s; }
-  .btn-add:hover { background: #f0f3ff; }
+/* ── Layout ───────────────────────────────────────────────────────── */
+main { max-width: 820px; margin: 0 auto; padding: 88px 24px 60px; }
 
-  /* Submit button */
-  .btn { background: #4f6ef7; color: white; border: none; border-radius: 8px; padding: 11px 26px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-  .btn:hover { background: #3a57e8; }
-  .btn:disabled { background: #b0b8d0; cursor: not-allowed; }
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff4; border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero { text-align: center; margin-bottom: 40px; }
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 16px;
+}
+.hero-eyebrow::before {
+  content: ''; display: block; width: 18px; height: 1px; background: var(--accent);
+}
+.hero-eyebrow::after {
+  content: ''; display: block; width: 18px; height: 1px; background: var(--accent);
+}
+.hero h1 {
+  font-family: var(--font-display); font-size: 2.4rem; font-weight: 600;
+  letter-spacing: -0.04em; line-height: 1.15; color: var(--text); margin-bottom: 12px;
+}
+.hero h1 span { color: var(--accent); }
+.hero p { font-size: 0.95rem; color: var(--text-2); max-width: 420px; margin: 0 auto; line-height: 1.6; }
 
-  /* Results */
-  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } }
-  .field-card { background: #f8f9fc; border-radius: 8px; padding: 14px; }
-  .field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #778; margin-bottom: 3px; }
-  .field-value { font-size: 0.95rem; font-weight: 600; color: #1a1a2e; word-break: break-all; }
-  .field-null { color: #bbb; font-style: italic; font-weight: 400; }
-  .confidence { display: inline-block; margin-top: 5px; font-size: 0.72rem; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
-  .conf-high { background: #d4f5e0; color: #1a7a40; }
-  .conf-mid  { background: #fff3cc; color: #8a6300; }
-  .conf-low  { background: #fde8e8; color: #b33; }
-  .provenance { margin-top: 6px; font-size: 0.72rem; color: #778; }
-  .provenance b { color: #445; }
-  .addresses-list { list-style: none; }
-  .addresses-list li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; font-size: 0.9rem; }
-  .addresses-list li:last-child { border-bottom: none; }
-  .meta-row { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: #778; margin-bottom: 14px; }
-  .errors { background: #fff4f4; border: 1px solid #fcc; border-radius: 8px; padding: 12px; margin-top: 12px; }
-  .errors li { font-size: 0.82rem; color: #c33; margin-top: 3px; }
-  pre { background: #1a1a2e; color: #c5d0e8; border-radius: 8px; padding: 16px; font-size: 0.76rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-  .view-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-  .view-tab { background: none; border: 1px solid #dde; border-radius: 6px; padding: 4px 14px; font-size: 0.82rem; cursor: pointer; color: #667; }
-  .view-tab.active { background: #4f6ef7; color: white; border-color: #4f6ef7; font-weight: 600; }
+/* ── Mode tabs ────────────────────────────────────────────────────── */
+.mode-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; margin-bottom: 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 4px; width: fit-content; margin-left: auto; margin-right: auto;
+}
+.mode-btn {
+  padding: 7px 20px; border-radius: var(--radius-md); border: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text-2); background: transparent; transition: all 0.2s;
+}
+.mode-btn.active { background: var(--surface2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.mode-btn:hover:not(.active) { color: var(--text); }
 
-  /* Batch results */
-  .batch-result-card { border: 1px solid #e2e5ef; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
-  .batch-result-header { background: #f0f3ff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e5ef; }
-  .batch-result-header h3 { font-size: 0.88rem; color: #334; }
-  .batch-result-body { padding: 18px; }
+/* ── Card ─────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border-hover); }
+.card-title {
+  font-family: var(--font-display); font-size: 13px; font-weight: 500;
+  color: var(--text-2); margin-bottom: 16px; text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
-  .hint { font-size: 0.78rem; color: #889; margin-top: 6px; }
+/* ── Drop zone ────────────────────────────────────────────────────── */
+.drop-zone {
+  border: 1.5px dashed var(--border); border-radius: var(--radius-md);
+  padding: 32px 20px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: transparent;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent); background: var(--accent-dim);
+}
+.drop-zone input { display: none; }
+.drop-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+.drop-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.drop-title u { color: var(--accent); cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--accent); }
+.drop-sub { font-size: 11px; color: var(--text-3); }
+
+/* ── File chips ───────────────────────────────────────────────────── */
+.file-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.file-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px 4px 8px;
+  font-size: 11px; color: var(--text-2);
+}
+.file-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.file-chip button {
+  background: none; border: none; cursor: pointer; color: var(--text-3);
+  font-size: 13px; line-height: 1; padding: 0; transition: color 0.15s;
+}
+.file-chip button:hover { color: var(--red); }
+
+/* ── Submit button ────────────────────────────────────────────────── */
+.submit-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px; margin-top: 16px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--radius-md); cursor: pointer;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.01em; transition: all 0.2s;
+}
+.submit-btn:hover:not(:disabled) { background: #0088ee; box-shadow: 0 0 20px var(--accent-glow); }
+.submit-btn:disabled { background: #1a1a1a; color: var(--text-3); cursor: not-allowed; border: 1px solid var(--border); }
+
+/* ── Spinner ──────────────────────────────────────────────────────── */
+.spin {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2); border-top-color: white;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Results ──────────────────────────────────────────────────────── */
+.result-wrapper { animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.result-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 20px;
+}
+.meta-chip {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-2);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px;
+}
+.meta-chip.green { color: var(--green); background: var(--green-dim); border-color: rgba(131,202,22,0.2); }
+.meta-chip.blue  { color: var(--accent); background: var(--accent-dim); border-color: rgba(0,153,255,0.2); }
+
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+@media (max-width: 560px) { .fields-grid { grid-template-columns: 1fr; } }
+
+.field-tile {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px; transition: border-color 0.2s;
+}
+.field-tile:hover { border-color: var(--border-hover); }
+.field-label { font-size: 10px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
+.field-value { font-size: 13px; font-weight: 500; color: var(--text); word-break: break-all; line-height: 1.4; }
+.field-null  { font-size: 13px; color: var(--text-3); font-style: italic; }
+
+.conf-bar-wrap { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.conf-bar-bg { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.conf-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+.conf-label { font-size: 10px; font-weight: 600; min-width: 28px; text-align: right; }
+
+.provenance-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; font-size: 10px; color: var(--text-3);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 6px; max-width: 100%; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.provenance-chip b { color: var(--text-2); font-weight: 500; flex-shrink: 0; }
+
+/* ── Property addresses ───────────────────────────────────────────── */
+.addr-section { margin-top: 4px; }
+.addr-header { font-size: 10px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.addr-list { display: flex; flex-direction: column; gap: 6px; }
+.addr-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  transition: border-color 0.15s;
+}
+.addr-row:hover { border-color: var(--border-hover); }
+.addr-text { font-size: 12.5px; font-weight: 500; color: var(--text); line-height: 1.4; }
+.addr-prov { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+.addr-conf { flex-shrink: 0; }
+
+/* ── View tabs ────────────────────────────────────────────────────── */
+.view-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.view-tab {
+  font-size: 11px; font-weight: 500; padding: 4px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-3); cursor: pointer; transition: all 0.15s;
+}
+.view-tab.active { background: var(--surface2); color: var(--text); border-color: var(--border-hover); }
+.view-tab:hover:not(.active) { color: var(--text-2); }
+
+/* ── JSON view ────────────────────────────────────────────────────── */
+pre {
+  background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;
+  word-break: break-all; color: #8db4e0; line-height: 1.6; font-family: 'Fragment Mono', 'Fira Code', monospace;
+}
+
+/* ── Error block ──────────────────────────────────────────────────── */
+.error-block {
+  background: var(--red-dim); border: 1px solid rgba(250,76,89,0.25);
+  border-radius: var(--radius-md); padding: 12px 14px; margin-top: 12px;
+}
+.error-block p { font-size: 11px; color: var(--red); line-height: 1.6; }
+
+/* ── Batch: group ─────────────────────────────────────────────────── */
+.sub-group {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.sub-group:hover { border-color: var(--border-hover); }
+.sub-group-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sub-group-label { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub-group-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent-dim); color: var(--accent);
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  margin-right: 8px; flex-shrink: 0;
+}
+.btn-remove-group {
+  font-size: 11px; color: var(--text-3); background: none;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 3px 10px; cursor: pointer; transition: all 0.15s;
+}
+.btn-remove-group:hover { color: var(--red); border-color: rgba(250,76,89,0.3); }
+
+.btn-add-group {
+  width: 100%; padding: 10px; margin-bottom: 14px;
+  background: transparent; border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md); color: var(--text-3);
+  font-family: var(--font-body); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-add-group:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* ── Batch result card ────────────────────────────────────────────── */
+.batch-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden;
+  animation: fadeUp 0.3s ease;
+}
+.batch-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.batch-card-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.batch-card-meta { display: flex; align-items: center; gap: 8px; }
+.batch-card-body { padding: 20px; }
+
+/* ── Confidence helpers ───────────────────────────────────────────── */
+.conf-high { color: var(--green); }
+.conf-mid  { color: var(--amber); }
+.conf-low  { color: var(--red);   }
+.fill-high { background: var(--green); }
+.fill-mid  { background: var(--amber); }
+.fill-low  { background: var(--red);   }
+
+/* ── Empty state ──────────────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 13px; }
+.empty-state .icon { font-size: 28px; margin-bottom: 10px; display: block; opacity: 0.4; }
+
+/* ── Status dot ───────────────────────────────────────────────────── */
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+/* ── Divider ──────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
 </style>
 </head>
 <body>
-<header>
-  <h1>ResiQuant Submission Extractor</h1>
-  <span>Broker &amp; property data from insurance emails</span>
-</header>
+
+<!-- ── Navigation ───────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">RQ</div>
+    <span class="nav-logo-text">ResiQuant</span>
+    <span class="nav-badge">Extractor</span>
+  </div>
+  <div class="nav-right">
+    <div class="status-dot"></div>
+    <span>API live</span>
+    <a href="/docs" target="_blank">API Docs</a>
+    <a href="/metrics" target="_blank">Metrics</a>
+  </div>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
 <main>
-  <!-- Mode switcher -->
-  <div class="mode-tabs">
-    <button class="mode-tab active" onclick="switchMode('single')">Single Submission</button>
-    <button class="mode-tab" onclick="switchMode('batch')">Batch (Multiple Submissions)</button>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Submission Intelligence</div>
+    <h1>Extract broker data<br/>from <span>any submission</span></h1>
+    <p>Upload insurance submission emails and attachments. Get structured broker and property data in seconds.</p>
   </div>
 
-  <!-- ── SINGLE MODE ── -->
+  <!-- Mode bar -->
+  <div class="mode-bar">
+    <button class="mode-btn active" onclick="switchMode('single')">Single Submission</button>
+    <button class="mode-btn" onclick="switchMode('batch')">Batch Mode</button>
+  </div>
+
+  <!-- ── SINGLE MODE ────────────────────────────────────────────── -->
   <div id="singleMode">
     <div class="card">
-      <h2>Upload Submission Files</h2>
+      <div class="card-title">Upload Files</div>
       <div class="drop-zone" id="singleDrop">
         <input type="file" id="singleInput" multiple accept=".pdf,.xlsx,.xls,.docx"/>
-        <div>&#128196; Drop files here or <u onclick="document.getElementById('singleInput').click()" style="cursor:pointer">browse</u></div>
-        <p>Email PDF + attachments (PDF, XLSX, XLS, DOCX)</p>
+        <span class="drop-icon">📄</span>
+        <div class="drop-title">Drop files here or <u onclick="document.getElementById('singleInput').click()">browse</u></div>
+        <div class="drop-sub">Email PDF + attachments &nbsp;·&nbsp; PDF, XLSX, XLS, DOCX</div>
       </div>
       <div class="file-list" id="singleFileList"></div>
-      <div style="margin-top:16px">
-        <button class="btn" id="singleBtn" disabled onclick="runSingle()">Extract</button>
-      </div>
+      <button class="submit-btn" id="singleBtn" disabled onclick="runSingle()">
+        Extract Broker Data
+      </button>
     </div>
-    <div class="card" id="singleResult" style="display:none">
-      <h2>Extraction Result</h2>
-      <div class="view-tabs">
-        <button class="view-tab active" onclick="showViewTab('singleVisual','singleJson',0)">Visual</button>
-        <button class="view-tab" onclick="showViewTab('singleVisual','singleJson',1)">Raw JSON</button>
-      </div>
-      <div id="singleVisual"></div>
-      <pre id="singleJson" style="display:none"></pre>
+
+    <div id="singleResult" style="display:none">
+      <div class="card result-wrapper" id="singleResultInner"></div>
     </div>
   </div>
 
-  <!-- ── BATCH MODE ── -->
+  <!-- ── BATCH MODE ─────────────────────────────────────────────── -->
   <div id="batchMode" style="display:none">
     <div class="card">
-      <h2>Upload Multiple Submissions</h2>
-      <p class="hint" style="margin-bottom:14px">Add one group per submission. Each group should contain the email PDF + its attachments.</p>
+      <div class="card-title">Submissions</div>
       <div id="subGroups"></div>
-      <button class="btn-add" onclick="addGroup()">+ Add Submission</button>
-      <div>
-        <button class="btn" id="batchBtn" disabled onclick="runBatch()">Extract All</button>
-      </div>
+      <button class="btn-add-group" onclick="addGroup()">+ Add Submission</button>
+      <button class="submit-btn" id="batchBtn" disabled onclick="runBatch()">
+        Extract All Submissions
+      </button>
     </div>
     <div id="batchResults"></div>
   </div>
+
 </main>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────
 let singleFiles = [];
-let groups = [];  // [{id, files:[]}]
-let groupCounter = 0;
+let groups = [];
+let gc = 0;
 
-// ── Mode switch ────────────────────────────────────────────────────────────
-function switchMode(mode) {
-  document.querySelectorAll('.mode-tab').forEach((t,i) => t.classList.toggle('active', (mode==='single'&&i===0)||(mode==='batch'&&i===1)));
-  document.getElementById('singleMode').style.display = mode==='single' ? 'block' : 'none';
-  document.getElementById('batchMode').style.display  = mode==='batch'  ? 'block' : 'none';
+// ── Mode ───────────────────────────────────────────────────────────
+function switchMode(m) {
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active', (m==='single'&&i===0)||(m==='batch'&&i===1)));
+  document.getElementById('singleMode').style.display = m==='single' ? '' : 'none';
+  document.getElementById('batchMode').style.display  = m==='batch'  ? '' : 'none';
 }
 
-// ── Single mode ────────────────────────────────────────────────────────────
-const singleDrop  = document.getElementById('singleDrop');
-const singleInput = document.getElementById('singleInput');
+// ── Single drop ────────────────────────────────────────────────────
+const sDrop = document.getElementById('singleDrop');
+const sIn   = document.getElementById('singleInput');
+sDrop.addEventListener('dragover', e => { e.preventDefault(); sDrop.classList.add('drag-over'); });
+sDrop.addEventListener('dragleave', () => sDrop.classList.remove('drag-over'));
+sDrop.addEventListener('drop', e => { e.preventDefault(); sDrop.classList.remove('drag-over'); addSingle([...e.dataTransfer.files]); });
+sIn.addEventListener('change', () => { addSingle([...sIn.files]); sIn.value=''; });
 
-singleDrop.addEventListener('click', e => { if (e.target.tagName!=='U') singleInput.click(); });
-singleDrop.addEventListener('dragover', e => { e.preventDefault(); singleDrop.classList.add('drag-over'); });
-singleDrop.addEventListener('dragleave', () => singleDrop.classList.remove('drag-over'));
-singleDrop.addEventListener('drop', e => { e.preventDefault(); singleDrop.classList.remove('drag-over'); addSingleFiles([...e.dataTransfer.files]); });
-singleInput.addEventListener('change', () => { addSingleFiles([...singleInput.files]); singleInput.value=''; });
-
-function addSingleFiles(files) {
+function addSingle(files) {
   files.forEach(f => { if (!singleFiles.find(x=>x.name===f.name)) singleFiles.push(f); });
-  renderSingleFiles();
+  renderSingle();
 }
-function removeSingleFile(name) { singleFiles = singleFiles.filter(f=>f.name!==name); renderSingleFiles(); }
-function renderSingleFiles() {
+function removeSingle(name) { singleFiles = singleFiles.filter(f=>f.name!==name); renderSingle(); }
+function renderSingle() {
   document.getElementById('singleFileList').innerHTML = singleFiles.map(f =>
-    `<div class="file-chip">&#128196; ${f.name} <button onclick="removeSingleFile('${f.name}')">&times;</button></div>`
+    `<div class="file-chip"><div class="file-chip-dot"></div>${f.name}<button onclick="removeSingle('${CSS.escape(f.name)}')" title="Remove">&times;</button></div>`
   ).join('');
-  document.getElementById('singleBtn').disabled = singleFiles.length===0;
+  document.getElementById('singleBtn').disabled = !singleFiles.length;
 }
 
 async function runSingle() {
   const btn = document.getElementById('singleBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Extracting…';
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div>Extracting…';
   document.getElementById('singleResult').style.display = 'none';
+
   const fd = new FormData();
   singleFiles.forEach(f => fd.append('files', f));
   try {
-    const res = await fetch('/extract', {method:'POST', body:fd});
-    const data = await res.json();
-    renderSingleResult(data);
-  } catch(e) { alert('Request failed: '+e.message); }
-  finally { btn.disabled=false; btn.innerHTML='Extract'; }
+    const r = await fetch('/extract', {method:'POST', body:fd});
+    const d = await r.json();
+    document.getElementById('singleResultInner').innerHTML = buildResultHTML(d, 'single');
+    document.getElementById('singleResult').style.display = '';
+    document.getElementById('singleResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+  } catch(e) {
+    alert('Request failed: ' + e.message);
+  } finally {
+    btn.disabled = !singleFiles.length;
+    btn.innerHTML = 'Extract Broker Data';
+  }
 }
 
-function renderSingleResult(data) {
-  document.getElementById('singleVisual').innerHTML = buildResultHTML(data);
-  document.getElementById('singleJson').textContent = JSON.stringify(data, null, 2);
-  document.getElementById('singleResult').style.display = 'block';
-}
-
-// ── Batch mode ─────────────────────────────────────────────────────────────
+// ── Batch ──────────────────────────────────────────────────────────
 function addGroup() {
-  const id = ++groupCounter;
+  const id = ++gc;
   groups.push({id, files:[]});
-
-  const div = document.createElement('div');
-  div.className = 'sub-group';
-  div.id = `group_${id}`;
-  div.innerHTML = `
-    <div class="sub-group-header">
-      <span class="sub-group-label">Submission ${id}</span>
-      <button class="btn-remove" onclick="removeGroup(${id})">Remove</button>
+  const el = document.createElement('div');
+  el.className = 'sub-group'; el.id = `grp_${id}`;
+  el.innerHTML = `
+    <div class="sub-group-head">
+      <div style="display:flex;align-items:center">
+        <div class="sub-group-num">${id}</div>
+        <span class="sub-group-label">Submission ${id}</span>
+      </div>
+      <button class="btn-remove-group" onclick="removeGroup(${id})">Remove</button>
     </div>
     <div class="drop-zone" id="drop_${id}" style="padding:18px">
-      <input type="file" id="input_${id}" multiple accept=".pdf,.xlsx,.xls,.docx"/>
-      <div style="font-size:0.85rem">&#128196; Drop files or <u onclick="document.getElementById('input_${id}').click()" style="cursor:pointer">browse</u></div>
+      <input type="file" id="inp_${id}" multiple accept=".pdf,.xlsx,.xls,.docx"/>
+      <div class="drop-title" style="font-size:12px">Drop files or <u onclick="document.getElementById('inp_${id}').click()">browse</u></div>
+      <div class="drop-sub">Email PDF + attachments</div>
     </div>
-    <div class="file-list" id="list_${id}" style="margin-top:8px"></div>`;
-  document.getElementById('subGroups').appendChild(div);
+    <div class="file-list" id="fl_${id}" style="margin-top:8px"></div>`;
+  document.getElementById('subGroups').appendChild(el);
 
-  // Wire events
-  const drop = document.getElementById(`drop_${id}`);
-  const input = document.getElementById(`input_${id}`);
-  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
-  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag-over'); addGroupFiles(id, [...e.dataTransfer.files]); });
-  input.addEventListener('change', () => { addGroupFiles(id, [...input.files]); input.value=''; });
-
+  const dz = document.getElementById(`drop_${id}`);
+  const inp = document.getElementById(`inp_${id}`);
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addGroupFiles(id,[...e.dataTransfer.files]); });
+  inp.addEventListener('change', () => { addGroupFiles(id,[...inp.files]); inp.value=''; });
   updateBatchBtn();
 }
 
 function removeGroup(id) {
   groups = groups.filter(g=>g.id!==id);
-  document.getElementById(`group_${id}`)?.remove();
+  document.getElementById(`grp_${id}`)?.remove();
   updateBatchBtn();
 }
-
 function addGroupFiles(id, files) {
-  const g = groups.find(g=>g.id===id);
-  if (!g) return;
+  const g = groups.find(g=>g.id===id); if (!g) return;
   files.forEach(f => { if (!g.files.find(x=>x.name===f.name)) g.files.push(f); });
   renderGroupFiles(id);
 }
-
-function removeGroupFile(groupId, fname) {
-  const g = groups.find(g=>g.id===groupId);
-  if (g) g.files = g.files.filter(f=>f.name!==fname);
-  renderGroupFiles(groupId);
+function removeGroupFile(gid, name) {
+  const g = groups.find(g=>g.id===gid); if (g) g.files = g.files.filter(f=>f.name!==name);
+  renderGroupFiles(gid);
 }
-
 function renderGroupFiles(id) {
-  const g = groups.find(g=>g.id===id);
-  if (!g) return;
-  document.getElementById(`list_${id}`).innerHTML = g.files.map(f =>
-    `<div class="file-chip">&#128196; ${f.name} <button onclick="removeGroupFile(${id},'${f.name}')">&times;</button></div>`
+  const g = groups.find(g=>g.id===id); if (!g) return;
+  document.getElementById(`fl_${id}`).innerHTML = g.files.map(f =>
+    `<div class="file-chip"><div class="file-chip-dot"></div>${f.name}<button onclick="removeGroupFile(${id},'${CSS.escape(f.name)}')" title="Remove">&times;</button></div>`
   ).join('');
   updateBatchBtn();
 }
-
 function updateBatchBtn() {
-  const hasFiles = groups.some(g=>g.files.length>0);
-  document.getElementById('batchBtn').disabled = !hasFiles || groups.length===0;
+  document.getElementById('batchBtn').disabled = !groups.some(g=>g.files.length>0);
 }
 
 async function runBatch() {
   const btn = document.getElementById('batchBtn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Extracting all…';
-  document.getElementById('batchResults').innerHTML='';
+  btn.disabled = true; btn.innerHTML = '<div class="spin"></div>Extracting all…';
+  document.getElementById('batchResults').innerHTML = '';
 
-  // Run all submissions in parallel
-  const promises = groups.filter(g=>g.files.length>0).map(async g => {
+  const active = groups.filter(g=>g.files.length>0);
+  const results = await Promise.all(active.map(async g => {
     const fd = new FormData();
     g.files.forEach(f => fd.append('files', f));
     try {
-      const res = await fetch('/extract', {method:'POST', body:fd});
-      return {id: `Submission ${g.id}`, data: await res.json(), ok: res.ok};
+      const r = await fetch('/extract', {method:'POST', body:fd});
+      return {label:`Submission ${g.id}`, data: await r.json(), ok: r.ok};
     } catch(e) {
-      return {id: `Submission ${g.id}`, data: null, ok: false, error: e.message};
+      return {label:`Submission ${g.id}`, data:null, ok:false, err:e.message};
     }
-  });
+  }));
 
-  const results = await Promise.all(promises);
-  renderBatchResults(results);
-  btn.disabled=false; btn.innerHTML='Extract All';
-}
-
-function renderBatchResults(results) {
-  const container = document.getElementById('batchResults');
-  container.innerHTML = '';
-  results.forEach((r, i) => {
+  results.forEach((r,i) => {
     const card = document.createElement('div');
-    card.className = 'batch-result-card';
+    card.className = 'batch-card';
     if (!r.ok || !r.data) {
       card.innerHTML = `
-        <div class="batch-result-header"><h3>&#128196; ${r.id}</h3><span style="color:#c44;font-size:0.8rem">Failed</span></div>
-        <div class="batch-result-body"><div class="errors"><ul><li>${r.error || 'Unknown error'}</li></ul></div></div>`;
+        <div class="batch-card-head">
+          <div class="batch-card-title">📄 ${r.label}</div>
+          <span style="font-size:11px;color:var(--red)">Failed</span>
+        </div>
+        <div class="batch-card-body"><div class="error-block"><p>${r.err||'Unknown error'}</p></div></div>`;
     } else {
-      const d = r.data;
-      const uid = `batch_${i}`;
+      const uid = `bc_${i}`;
       card.innerHTML = `
-        <div class="batch-result-header">
-          <h3>&#128196; ${r.id}</h3>
-          <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:#778">
-            ${d.cache_hit ? '&#9889; cached' : '&#128260; LLM'}
-            &nbsp;&#9201; ${d.latency_ms}ms
-            ${d.token_usage ? `&nbsp;&#128200; ${d.token_usage.total_tokens} tokens ($${d.token_usage.estimated_cost_usd})` : ''}
+        <div class="batch-card-head">
+          <div class="batch-card-title">
+            <div class="sub-group-num" style="width:22px;height:22px;font-size:11px">${i+1}</div>
+            ${r.label}
+          </div>
+          <div class="batch-card-meta">
+            ${r.data.cache_hit
+              ? `<div class="meta-chip green">⚡ cached</div>`
+              : `<div class="meta-chip blue">✦ LLM</div>`}
+            <div class="meta-chip">${r.data.latency_ms}ms</div>
+            ${r.data.token_usage ? `<div class="meta-chip">${r.data.token_usage.total_tokens} tok</div>` : ''}
           </div>
         </div>
-        <div class="batch-result-body">
+        <div class="batch-card-body">
           <div class="view-tabs">
-            <button class="view-tab active" onclick="showViewTab('${uid}_visual','${uid}_json',0)">Visual</button>
-            <button class="view-tab" onclick="showViewTab('${uid}_visual','${uid}_json',1)">Raw JSON</button>
+            <button class="view-tab active" onclick="showTab('${uid}',0)">Visual</button>
+            <button class="view-tab" onclick="showTab('${uid}',1)">JSON</button>
           </div>
-          <div id="${uid}_visual">${buildResultHTML(d)}</div>
-          <pre id="${uid}_json" style="display:none">${JSON.stringify(d,null,2)}</pre>
+          <div id="${uid}_v">${buildResultHTML(r.data, uid)}</div>
+          <pre id="${uid}_j" style="display:none">${JSON.stringify(r.data,null,2)}</pre>
         </div>`;
     }
-    container.appendChild(card);
+    document.getElementById('batchResults').appendChild(card);
   });
+
+  btn.disabled = false; btn.innerHTML = 'Extract All Submissions';
 }
 
-// ── Shared result rendering ────────────────────────────────────────────────
-function confClass(c) { return c>=0.8?'conf-high':c>=0.5?'conf-mid':'conf-low'; }
-function confLabel(c) { return (c*100).toFixed(0)+'%'; }
+// ── Result HTML ────────────────────────────────────────────────────
+function confColor(c) { return c>=0.8?'conf-high':c>=0.5?'conf-mid':'conf-low'; }
+function fillColor(c) { return c>=0.8?'fill-high':c>=0.5?'fill-mid':'fill-low'; }
 
-function fieldCard(label, field) {
+function confBar(c) {
+  const pct = Math.round(c*100);
+  return `<div class="conf-bar-wrap">
+    <div class="conf-bar-bg"><div class="conf-bar-fill ${fillColor(c)}" style="width:${pct}%"></div></div>
+    <span class="conf-label ${confColor(c)}">${pct}%</span>
+  </div>`;
+}
+
+function provChip(p) {
+  if (!p) return '';
+  const pg = p.page ? ` · p${p.page}` : '';
+  return `<div class="provenance-chip"><b>${p.doc_name}${pg}</b>&nbsp;·&nbsp;"${p.snippet?.slice(0,55)}${p.snippet?.length>55?'…':''}"</div>`;
+}
+
+function fieldTile(label, field) {
   const val = field.value
     ? `<div class="field-value">${field.value}</div>`
-    : `<div class="field-value field-null">not found</div>`;
-  const conf = `<span class="confidence ${confClass(field.confidence)}">${confLabel(field.confidence)} confidence</span>`;
-  const prov = field.provenance
-    ? `<div class="provenance"><b>${field.provenance.doc_name}</b>${field.provenance.page?` p.${field.provenance.page}`:''} — "${field.provenance.snippet}"</div>`
-    : '';
-  return `<div class="field-card"><div class="field-label">${label}</div>${val}${conf}${prov}</div>`;
+    : `<div class="field-null">not found</div>`;
+  return `<div class="field-tile">
+    <div class="field-label">${label}</div>
+    ${val}
+    ${confBar(field.confidence)}
+    ${provChip(field.provenance)}
+  </div>`;
 }
 
-function buildResultHTML(d) {
-  const fields = `<div class="result-grid">
-    ${fieldCard('Broker Name', d.broker_name)}
-    ${fieldCard('Broker Email', d.broker_email)}
-    ${fieldCard('Brokerage', d.brokerage)}
-    ${fieldCard('Brokerage Address', d.complete_brokerage_address)}
+function buildResultHTML(d, uid) {
+  const meta = `<div class="result-meta">
+    <div class="meta-chip" title="Request ID">⬡ ${d.request_id?.slice(0,8)}…</div>
+    ${d.cache_hit ? `<div class="meta-chip green">⚡ Cache hit</div>` : `<div class="meta-chip blue">✦ LLM call</div>`}
+    <div class="meta-chip">⏱ ${d.latency_ms}ms</div>
+    ${d.token_usage ? `<div class="meta-chip">↑ ${d.token_usage.prompt_tokens} · ↓ ${d.token_usage.completion_tokens} tokens</div>` : ''}
+    ${d.token_usage?.estimated_cost_usd != null ? `<div class="meta-chip">$ ${d.token_usage.estimated_cost_usd}</div>` : ''}
   </div>`;
 
-  const addrs = d.property_addresses.length
-    ? `<div style="margin-top:14px">
-        <div class="field-label" style="margin-bottom:8px">Property Addresses (${d.property_addresses.length})</div>
-        <ul class="addresses-list">${d.property_addresses.map(a =>
-          `<li>
-            <div>
-              <div style="font-weight:500">${a.address}</div>
-              ${a.provenance?`<div class="provenance"><b>${a.provenance.doc_name}</b> — "${a.provenance.snippet}"</div>`:''}
-            </div>
-            <span class="confidence ${confClass(a.confidence)}">${confLabel(a.confidence)}</span>
-          </li>`).join('')}
-        </ul></div>`
-    : `<div style="color:#aaa;margin-top:10px;font-size:0.82rem">No property addresses found.</div>`;
+  const fields = `<div class="fields-grid">
+    ${fieldTile('Broker Name', d.broker_name)}
+    ${fieldTile('Broker Email', d.broker_email)}
+    ${fieldTile('Brokerage', d.brokerage)}
+    ${fieldTile('Brokerage Address', d.complete_brokerage_address)}
+  </div>`;
 
-  const errs = d.errors&&d.errors.length
-    ? `<div class="errors" style="margin-top:12px"><b>Issues:</b><ul>${d.errors.map(e=>`<li>${e}</li>`).join('')}</ul></div>`
-    : '';
+  let addrs = '';
+  if (d.property_addresses?.length) {
+    const rows = d.property_addresses.map(a => `
+      <div class="addr-row">
+        <div>
+          <div class="addr-text">${a.address}</div>
+          ${a.provenance ? `<div class="addr-prov">${a.provenance.doc_name}${a.provenance.page?` · p${a.provenance.page}`:''}</div>` : ''}
+        </div>
+        <div class="addr-conf"><span class="conf-label ${confColor(a.confidence)}" style="font-size:11px">${Math.round(a.confidence*100)}%</span></div>
+      </div>`).join('');
+    addrs = `<div class="addr-section">
+      <div class="addr-header">Property Addresses &nbsp;(${d.property_addresses.length})</div>
+      <div class="addr-list">${rows}</div>
+    </div>`;
+  } else {
+    addrs = `<div class="empty-state" style="padding:20px"><span class="icon">🗺</span>No property addresses found</div>`;
+  }
 
-  return fields + addrs + errs;
+  const errs = d.errors?.length
+    ? `<div class="error-block"><p>${d.errors.join('<br/>')}</p></div>` : '';
+
+  return meta + fields + addrs + errs;
 }
 
-function showViewTab(visId, jsonId, idx) {
-  const vis = document.getElementById(visId);
-  const json = document.getElementById(jsonId);
-  if (!vis || !json) return;
-  const tabs = vis.closest('.batch-result-body, .card')?.querySelectorAll('.view-tab') ||
-               document.querySelectorAll(`#${visId}`)[0]?.parentElement?.querySelectorAll('.view-tab');
-  vis.parentElement.querySelectorAll('.view-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
-  vis.style.display  = idx===0 ? 'block' : 'none';
-  json.style.display = idx===1 ? 'block' : 'none';
+// ── View tab toggle ────────────────────────────────────────────────
+function showTab(uid, idx) {
+  const vEl = document.getElementById(`${uid}_v`);
+  const jEl = document.getElementById(`${uid}_j`);
+  if (!vEl || !jEl) return;
+  const tabs = vEl.closest('.batch-card-body, .card')?.querySelectorAll('.view-tab');
+  tabs?.forEach((t,i) => t.classList.toggle('active', i===idx));
+  vEl.style.display = idx===0 ? '' : 'none';
+  jEl.style.display = idx===1 ? '' : 'none';
 }
 
-// Start with one group in batch mode
+// Single view tabs
+function showViewTab(vId, jId, idx) {
+  const v = document.getElementById(vId), j = document.getElementById(jId); if(!v||!j) return;
+  v.closest('.card')?.querySelectorAll('.view-tab').forEach((t,i) => t.classList.toggle('active',i===idx));
+  v.style.display=idx===0?'':'none'; j.style.display=idx===1?'':'none';
+}
+
+// Start with one batch group pre-added
 addGroup();
 </script>
 </body>
