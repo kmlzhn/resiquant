@@ -8,781 +8,526 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-/* ── PP Neue Montreal fallback stack ───────────────────────────────────── */
 @font-face {
   font-family: 'PP Neue Montreal';
   src: local('PP Neue Montreal Medium'), local('PPNeueMontreal-Medium');
-  font-weight: 500;
-  font-style: normal;
+  font-weight: 500; font-style: normal;
 }
 
-/* ── Design tokens (exact ResiQuant palette) ───────────────────────────── */
+/* ── Tokens ────────────────────────────────────────────────────────────── */
 :root {
-  /* backgrounds */
-  --bg:           #0c0c0c;
-  --surface:      #111111;
-  --surface-2:    #161616;
-  --surface-3:    #1c1c1c;
+  --bg:           #ffffff;
+  --surface:      #f9f9f9;
+  --surface-2:    #f2f2f2;
+  --surface-3:    #ebebeb;
+  --border:       rgba(0,0,0,0.07);
+  --border-mid:   rgba(0,0,0,0.12);
+  --border-high:  rgba(0,0,0,0.22);
+  --red:          #d93025;
+  --amber:        #c87d00;
+  --text:         #0c0c0c;
+  --text-2:       #666666;
+  --text-3:       #999999;
+  --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  --font: 'PP Neue Montreal','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --fw: 500; --lh: 1.3; --ls: 0.014em;
+}
 
-  /* borders */
-  --border:       rgba(255,255,255,0.06);
-  --border-mid:   rgba(255,255,255,0.1);
-  --border-high:  rgba(255,255,255,0.18);
+/* ── Animations ────────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.52s cubic-bezier(0.22,1,0.36,1),
+              transform 0.52s cubic-bezier(0.22,1,0.36,1);
+  transition-delay: var(--d, 0ms);
+}
+.reveal.in { opacity: 1; transform: none; }
 
-  /* brand green (from their site) */
-  --green:        #83ca16;
-  --green-dim:    rgba(131,202,22,0.08);
-  --green-border: rgba(131,202,22,0.22);
+.hero-line {
+  opacity: 0; transform: translateY(12px);
+  animation: heroIn 0.56s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.hero-line:nth-child(1) { animation-delay: 0.05s; }
+.hero-line:nth-child(2) { animation-delay: 0.15s; }
+.hero-line:nth-child(3) { animation-delay: 0.24s; }
+@keyframes heroIn { to { opacity:1; transform:none; } }
 
-  /* status */
-  --red:          #f04141;
-  --amber:        #e8a020;
+@keyframes up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes chipIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+@keyframes rowIn  { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:none; } }
+@keyframes addrIn { from { opacity:0; transform:translateY(5px);  } to { opacity:1; transform:none; } }
+@keyframes rot    { to { transform:rotate(360deg); } }
+@keyframes dots   { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
 
-  /* text */
-  --text:         #f2f2f2;
-  --text-2:       #888888;  /* their #666 on dark */
-  --text-3:       #444444;
+.chip-enter { animation: chipIn 0.3s cubic-bezier(0.22,1,0.36,1) both; }
 
-  /* radius */
-  --r-xs:  4px;
-  --r-sm:  6px;
-  --r-md:  10px;
-  --r-lg:  14px;
+.f-row { opacity:0; animation: rowIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.f-row:nth-child(1){animation-delay:.07s} .f-row:nth-child(2){animation-delay:.13s}
+.f-row:nth-child(3){animation-delay:.19s} .f-row:nth-child(4){animation-delay:.25s}
 
-  /* typography — PP Neue Montreal spec */
-  --font:    'PP Neue Montreal', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --fw:      500;
-  --lh:      1.3;
-  --ls:      0.014em;         /* 0.21px at 15px */
+.addr-row { opacity:0; animation: addrIn 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+.addr-row:nth-child(1){animation-delay:.09s} .addr-row:nth-child(2){animation-delay:.16s}
+.addr-row:nth-child(3){animation-delay:.23s} .addr-row:nth-child(n+4){animation-delay:.29s}
+
+.result-card, .sub-card { animation: up 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+
+nav { transition: box-shadow 0.22s ease, border-color 0.22s ease; }
+nav.scrolled { box-shadow: 0 1px 14px rgba(0,0,0,0.07); border-bottom-color: rgba(0,0,0,0.1); }
+
+.card, .result-card, .sub-card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover        { box-shadow:0 4px 20px rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.12); }
+.result-card:hover { box-shadow:0 4px 20px rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.12); }
+.sub-card:hover    { box-shadow:0 4px 20px rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.12); }
+
+.btn { transition: all 0.14s ease; }
+.btn:active:not(:disabled) { transform: scale(0.975); }
+
+.loading-text::after {
+  content:''; display:inline-block;
+  animation: dots 1.4s steps(4,end) infinite;
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 html {
   font-size: 18px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-@media (max-width: 489px) { html { font-size: 16px; } }
-
+@media (max-width:489px) { html { font-size:16px; } }
 body {
-  font-family: var(--font);
-  font-weight: var(--fw);
-  font-style: normal;
-  line-height: var(--lh);
-  letter-spacing: var(--ls);
-  font-feature-settings: "blwf" 1, "cv09" 1, "cv03" 1, "cv04" 1, "cv11" 1;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+  font-family: var(--font); font-weight: var(--fw);
+  line-height: var(--lh); letter-spacing: var(--ls);
+  font-feature-settings: "blwf"1,"cv09"1,"cv03"1,"cv04"1,"cv11"1;
+  background: var(--bg); color: var(--text); min-height: 100vh;
 }
-
-/* ── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#d0d0d0; border-radius:2px; }
 
 /* ── Nav ───────────────────────────────────────────────────────────────── */
 nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  height: 54px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 28px;
-  background: rgba(12,12,12,0.85);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-bottom: 1px solid var(--border);
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  height:54px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 28px;
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:blur(20px) saturate(1.2);
+  -webkit-backdrop-filter:blur(20px) saturate(1.2);
+  border-bottom:1px solid var(--border);
 }
-
-.nav-brand {
-  display: flex; align-items: center; gap: 9px;
-  text-decoration: none;
-}
-/* Logo mark — X inside a border box, exactly as on resiquant.ai */
-.logo-box {
-  width: 24px; height: 24px;
-  border: 1.5px solid rgba(255,255,255,0.75);
-  border-radius: 3px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.logo-box svg { width: 12px; height: 12px; }
-.nav-wordmark {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.nav-actions {
-  display: flex; align-items: center; gap: 6px;
-}
-.nav-pill {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 11px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  background: var(--green-dim);
-  border: 1px solid var(--green-border);
-  color: var(--green);
-}
-.pulse { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2.2s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(0.85)} }
-
+.nav-brand { text-decoration:none; }
+.nav-wordmark { font-size:14px; font-weight:500; letter-spacing:-0.01em; color:#0c0c0c; }
+.nav-actions  { display:flex; align-items:center; gap:6px; }
 .nav-btn {
-  padding: 5px 12px;
-  font-family: var(--font); font-size: 12px; font-weight: 500; letter-spacing: 0.01em;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border-mid);
-  background: transparent; color: var(--text-2);
-  cursor: pointer; transition: all 0.14s;
-  text-decoration: none; display: inline-flex; align-items: center;
+  padding:5px 12px; font-family:var(--font); font-size:12px; font-weight:500;
+  border-radius:var(--r-sm); border:1px solid var(--border-mid);
+  background:transparent; color:var(--text-2); cursor:pointer;
+  text-decoration:none; display:inline-flex; align-items:center;
+  transition:all 0.14s;
 }
-.nav-btn:hover { border-color: var(--border-high); color: var(--text); }
-
-/* ── Page shell ────────────────────────────────────────────────────────── */
-.page { padding-top: 54px; }
-
-/* ── Section wrapper ───────────────────────────────────────────────────── */
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
-
-/* ── Header band ───────────────────────────────────────────────────────── */
-.page-header {
-  padding: 56px 0 40px;
-  border-bottom: 1px solid var(--border);
+.nav-btn:hover { border-color:var(--border-high); color:var(--text); }
+.nav-pill {
+  display:flex; align-items:center; gap:5px; padding:5px 11px;
+  border-radius:20px; font-size:12px; font-weight:500;
+  background:var(--surface-2); border:1px solid var(--border-mid); color:var(--text-2);
 }
+.pulse { width:5px; height:5px; border-radius:50%; background:#0c0c0c; animation:pulse 2.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(0.85)} }
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.page { padding-top:54px; }
+.wrap { max-width:1080px; margin:0 auto; padding:0 28px; }
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.page-header { padding:56px 0 40px; border-bottom:1px solid var(--border); }
 .eyebrow {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--text-3);
-  margin-bottom: 18px;
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:18px;
 }
-.eyebrow-line { width: 20px; height: 1px; background: var(--text-3); }
-
+.eyebrow-line { width:20px; height:1px; background:var(--text-3); }
 .page-title {
-  font-size: clamp(28px, 3.8vw, 46px);
-  font-weight: 500;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-  color: var(--text);
-  margin-bottom: 14px;
-  max-width: 560px;
-}
-.page-title em {
-  font-style: normal;
-  color: var(--green);
+  font-size:clamp(28px,3.8vw,46px); font-weight:500;
+  line-height:1.08; letter-spacing:-0.025em;
+  color:var(--text); margin-bottom:14px; max-width:560px;
 }
 .page-sub {
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--text-2);
-  max-width: 440px;
-  letter-spacing: var(--ls);
+  font-size:15px; line-height:1.6; color:var(--text-2);
+  max-width:440px; letter-spacing:var(--ls);
 }
 
-/* ── Tab bar ───────────────────────────────────────────────────────────── */
-.tab-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+/* ── Main content ──────────────────────────────────────────────────────── */
+.main-content {
+  padding:32px 0 80px;
+  display:grid;
+  grid-template-columns: minmax(0,420px) minmax(0,1fr);
+  gap:24px;
+  align-items:start;
 }
-.tabs {
-  display: inline-flex;
-  padding: 3px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  gap: 2px;
-}
-.tab {
-  padding: 6px 18px;
-  font-family: var(--font); font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
-  border: none; border-radius: 4px;
-  background: transparent; color: var(--text-2);
-  cursor: pointer; transition: all 0.13s;
-}
-.tab.active {
-  background: var(--surface-3);
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-}
-.tab-note {
-  font-size: 12px; color: var(--text-3);
-}
-
-/* ── Two-column layout ─────────────────────────────────────────────────── */
-.two-col {
-  padding: 28px 0 80px;
-  display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-  gap: 20px;
-  align-items: start;
-}
-@media (max-width: 740px) {
-  .two-col { grid-template-columns: 1fr; }
-}
+@media (max-width:760px) { .main-content { grid-template-columns:1fr; } }
 
 /* ── Card ──────────────────────────────────────────────────────────────── */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden;
 }
 .card-head {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  padding:14px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
 }
 .card-label {
-  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--text-3);
+  font-size:11px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--text-3);
 }
-.card-body { padding: 18px; }
+.card-count {
+  font-size:11px; color:var(--text-3);
+  background:var(--surface-2); border:1px solid var(--border);
+  padding:2px 8px; border-radius:20px;
+}
+.card-body { padding:18px; }
 
 /* ── Drop zone ─────────────────────────────────────────────────────────── */
 .drop {
-  border: 1px dashed var(--border-mid);
-  border-radius: var(--r-md);
-  padding: 36px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.18s;
-  user-select: none;
+  border:1px dashed var(--border-mid); border-radius:var(--r-md);
+  padding:36px 20px; text-align:center; cursor:pointer;
+  transition:all 0.18s; user-select:none;
 }
-.drop:hover, .drop.over {
-  border-color: var(--green);
-  background: var(--green-dim);
-}
-.drop input { display: none; }
+.drop:hover, .drop.over { border-color:rgba(0,0,0,0.3); background:var(--surface-2); }
+.drop input { display:none; }
 .drop-icon-wrap {
-  width: 34px; height: 34px; margin: 0 auto 13px;
-  border: 1px solid var(--border-mid);
-  border-radius: var(--r-sm);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-3);
+  width:34px; height:34px; margin:0 auto 13px;
+  border:1px solid var(--border-mid); border-radius:var(--r-sm);
+  display:flex; align-items:center; justify-content:center; color:var(--text-3);
 }
-.drop-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
-.drop-sub   { font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5; }
-.drop-tags  { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.drop-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:5px; }
+.drop-sub   { font-size:12px; color:var(--text-3); margin-bottom:16px; line-height:1.5; }
+.drop-tags  { display:flex; gap:5px; justify-content:center; flex-wrap:wrap; }
 .tag {
-  font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 3px 7px;
-  border: 1px solid var(--border-mid);
-  border-radius: var(--r-xs);
-  color: var(--text-3);
+  font-size:10px; font-weight:500; letter-spacing:0.06em; text-transform:uppercase;
+  padding:3px 7px; border:1px solid var(--border-mid); border-radius:var(--r-xs); color:var(--text-3);
 }
 
-/* file chips */
-.file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+/* ── File list ─────────────────────────────────────────────────────────── */
+.file-list { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
 .file-chip {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:var(--r-sm);
 }
-.file-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-.file-name { font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-sz   { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.file-dot { width:5px; height:5px; border-radius:50%; background:#0c0c0c; flex-shrink:0; }
+.file-name { font-size:12px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-sz   { font-size:11px; color:var(--text-3); flex-shrink:0; }
 .file-rm   {
-  width: 16px; height: 16px; border-radius: 50%; border: none;
-  background: transparent; color: var(--text-3); cursor: pointer;
-  font-size: 10px; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all 0.12s;
-  font-family: var(--font);
+  width:16px; height:16px; border-radius:50%; border:none;
+  background:transparent; color:var(--text-3); cursor:pointer;
+  font-size:10px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all 0.12s; font-family:var(--font);
 }
-.file-rm:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+.file-rm:hover { background:rgba(0,0,0,0.06); color:var(--text); }
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
-.btn-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.btn-row { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
 .btn {
-  width: 100%; padding: 11px 18px;
-  font-family: var(--font); font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
-  border-radius: var(--r-sm); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.14s;
+  width:100%; padding:11px 18px;
+  font-family:var(--font); font-size:13px; font-weight:500; letter-spacing:0.01em;
+  border-radius:var(--r-sm); border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
 }
-.btn-white { background: #f2f2f2; color: #0c0c0c; }
-.btn-white:hover { background: #e4e4e4; }
-.btn-white:disabled { opacity: 0.28; cursor: not-allowed; }
+.btn-black { background:#0c0c0c; color:#fff; }
+.btn-black:hover { background:#1f1f1f; }
+.btn-black:disabled { opacity:0.25; cursor:not-allowed; }
 .btn-ghost {
-  background: transparent; color: var(--text-2);
-  border: 1px solid var(--border-mid);
+  background:transparent; color:var(--text-2);
+  border:1px solid var(--border-mid);
 }
-.btn-ghost:hover { border-color: var(--border-high); color: var(--text); }
-.btn-ghost[style*="display:none"] { display: none !important; }
+.btn-ghost:hover { border-color:var(--border-high); color:var(--text); }
 
-/* spinner */
-.spin { width: 13px; height: 13px; border: 1.5px solid rgba(0,0,0,0.15); border-top-color: #0c0c0c; border-radius: 50%; animation: rot .65s linear infinite; }
-@keyframes rot { to { transform: rotate(360deg); } }
-.spin-g { width: 26px; height: 26px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: rot .8s linear infinite; }
+/* ── Spinners ──────────────────────────────────────────────────────────── */
+.spin   { width:13px; height:13px; border:1.5px solid rgba(255,255,255,0.25); border-top-color:#fff; border-radius:50%; animation:rot .65s linear infinite; }
+.spin-g { width:26px; height:26px; border:2px solid var(--border); border-top-color:#0c0c0c; border-radius:50%; animation:rot .8s linear infinite; }
 
-/* ── Results placeholder ───────────────────────────────────────────────── */
+/* ── Results column ────────────────────────────────────────────────────── */
+.results-col { display:flex; flex-direction:column; gap:16px; }
+
 .placeholder {
-  border: 1px dashed var(--border);
-  border-radius: var(--r-lg);
-  padding: 52px 24px;
-  text-align: center;
-  color: var(--text-3);
-  font-size: 13px;
-  line-height: 1.6;
+  border:1px dashed var(--border); border-radius:var(--r-lg);
+  padding:52px 24px; text-align:center; color:var(--text-3);
+  font-size:13px; line-height:1.6;
 }
 .ph-icon {
-  width: 30px; height: 30px; margin: 0 auto 12px;
-  border: 1px solid var(--border); border-radius: var(--r-sm);
-  display: flex; align-items: center; justify-content: center; color: var(--text-3);
+  width:30px; height:30px; margin:0 auto 12px;
+  border:1px solid var(--border); border-radius:var(--r-sm);
+  display:flex; align-items:center; justify-content:center; color:var(--text-3);
 }
-
-/* loading */
 .loading {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 52px 24px; gap: 14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:52px 24px; gap:14px;
 }
-.loading-text { font-size: 13px; color: var(--text-3); }
+.loading-text { font-size:13px; color:var(--text-3); }
 
 /* ── Result card ───────────────────────────────────────────────────────── */
 .result-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  animation: up .28s ease;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden;
 }
-@keyframes up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-
 .result-top {
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  padding:13px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
 }
-.badge-row { display: flex; align-items: center; gap: 6px; }
+.result-id { font-size:12px; font-weight:500; color:var(--text); }
+.badge-row { display:flex; align-items:center; gap:6px; }
 .badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 500;
-  padding: 3px 9px; border-radius: 20px;
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px;
 }
-.badge-ok     { background: var(--green-dim); border: 1px solid var(--green-border); color: var(--green); }
-.badge-cached { background: var(--surface-2); border: 1px solid var(--border-mid); color: var(--text-3); }
-.badge-err    { background: rgba(240,65,65,0.08); border: 1px solid rgba(240,65,65,0.2); color: var(--red); }
-.chip-row { display: flex; align-items: center; gap: 5px; }
-.chip {
-  font-size: 11px; color: var(--text-3);
-  padding: 2px 8px;
-  background: var(--surface-2); border-radius: var(--r-xs);
-}
+.badge-ok     { background:#0c0c0c; border:1px solid #0c0c0c; color:#fff; }
+.badge-cached { background:var(--surface-2); border:1px solid var(--border-mid); color:var(--text-3); }
+.badge-err    { background:rgba(217,48,37,0.07); border:1px solid rgba(217,48,37,0.2); color:var(--red); }
+.chip-row { display:flex; align-items:center; gap:5px; }
+.chip { font-size:11px; color:var(--text-3); padding:2px 8px; background:var(--surface-2); border-radius:var(--r-xs); }
 
-/* sections inside result */
-.rsec { padding: 16px 18px; border-bottom: 1px solid var(--border); }
-.rsec:last-child { border-bottom: none; }
-.sec-label {
-  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--text-3); margin-bottom: 12px;
-}
+.rsec { padding:16px 18px; border-bottom:1px solid var(--border); }
+.rsec:last-child { border-bottom:none; }
+.sec-label { font-size:10px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px; }
 
-/* field rows */
-.f-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-bottom: 10px;
-}
-.f-row:last-child { margin-bottom: 0; }
-.f-left { flex: 1; min-width: 0; }
-.f-sub  { font-size: 10px; color: var(--text-3); margin-bottom: 3px; letter-spacing: 0.04em; }
-.f-val  { font-size: 13px; color: var(--text); word-break: break-word; }
-.f-nil  { font-size: 13px; color: var(--text-3); }
+.f-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.f-row:last-child { margin-bottom:0; }
+.f-left { flex:1; min-width:0; }
+.f-sub  { font-size:10px; color:var(--text-3); margin-bottom:3px; letter-spacing:0.04em; }
+.f-val  { font-size:13px; color:var(--text); word-break:break-word; }
+.f-nil  { font-size:13px; color:var(--text-3); }
 .prov   {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; color: var(--text-3);
-  padding: 2px 6px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-xs); margin-top: 4px;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:10px; color:var(--text-3); padding:2px 6px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-xs);
+  margin-top:4px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.prov-sep { opacity: .35; }
+.prov-sep { opacity:.35; }
+.conf-wrap { flex-shrink:0; width:44px; padding-top:16px; }
+.conf-track { height:2px; background:var(--border-mid); border-radius:1px; overflow:hidden; margin-bottom:3px; }
+.conf-fill { height:100%; border-radius:1px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+.c-hi .conf-fill { background:#0c0c0c; }
+.c-md .conf-fill { background:var(--amber); }
+.c-lo .conf-fill { background:var(--red); }
+.conf-pct { font-size:10px; color:var(--text-3); text-align:right; }
 
-/* confidence */
-.conf-wrap { flex-shrink: 0; width: 44px; padding-top: 16px; }
-.conf-track { height: 2px; background: var(--border-mid); border-radius: 1px; overflow: hidden; margin-bottom: 3px; }
-.conf-fill { height: 100%; border-radius: 1px; transition: width .6s cubic-bezier(.4,0,.2,1); }
-.c-hi .conf-fill { background: var(--green); }
-.c-md .conf-fill { background: var(--amber); }
-.c-lo .conf-fill { background: var(--red); }
-.conf-pct { font-size: 10px; color: var(--text-3); text-align: right; }
-
-/* address list */
-.addr-list { display: flex; flex-direction: column; gap: 6px; }
+.addr-list { display:flex; flex-direction:column; gap:6px; }
 .addr-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-sm);
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:var(--r-sm);
 }
 .addr-n {
-  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
-  background: var(--green-dim); border: 1px solid var(--green-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 600; color: var(--green);
+  width:18px; height:18px; border-radius:50%; flex-shrink:0;
+  background:var(--surface-3); border:1px solid var(--border-mid);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:600; color:var(--text-2);
 }
-.addr-v { font-size: 12px; color: var(--text); flex: 1; }
-.addr-c { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.addr-v { font-size:12px; color:var(--text); flex:1; }
+.addr-c { font-size:11px; color:var(--text-3); flex-shrink:0; }
 
-/* errors */
 .err-row {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 10px 14px;
-  background: rgba(240,65,65,0.07);
-  border: 1px solid rgba(240,65,65,0.18);
-  border-radius: var(--r-sm);
-  font-size: 12px; color: var(--red);
+  display:flex; align-items:flex-start; gap:8px;
+  padding:10px 14px;
+  background:rgba(217,48,37,0.06); border:1px solid rgba(217,48,37,0.16);
+  border-radius:var(--r-sm); font-size:12px; color:var(--red);
 }
 
-/* ── Batch panel ───────────────────────────────────────────────────────── */
-#panel-batch { display: none; }
-#panel-batch.show { display: block; }
-
-.batch-wrap { padding: 28px 0 80px; }
-.batch-upload {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.batch-modes {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-top: 16px; padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-@media (max-width: 500px) { .batch-modes { grid-template-columns: 1fr; } }
-.mode-tile {
-  padding: 13px 16px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-}
-.mode-tile-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-.mode-tile-desc  { font-size: 11px; color: var(--text-3); line-height: 1.55; }
-.batch-btn-row { display: flex; gap: 8px; margin-top: 14px; }
-.batch-btn-row .btn { flex: 1; }
-
-.batch-results { display: flex; flex-direction: column; gap: 14px; }
-.sub-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  animation: up .28s ease;
-}
-.sub-head {
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-}
-.sub-n {
-  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  background: var(--green-dim); border: 1px solid var(--green-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 600; color: var(--green);
-}
-.sub-id   { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
-.sub-body { padding: 16px 18px; }
-.sub-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
-}
-@media (max-width: 500px) { .sub-grid { grid-template-columns: 1fr; } }
-.sub-field-title { font-size: 10px; color: var(--text-3); margin-bottom: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
-.sub-field-val   { font-size: 13px; color: var(--text); }
-.sub-field-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+/* Multiple results: stagger sub-cards */
+.sub-card:nth-child(1){animation-delay:.00s}
+.sub-card:nth-child(2){animation-delay:.06s}
+.sub-card:nth-child(3){animation-delay:.12s}
+.sub-card:nth-child(4){animation-delay:.18s}
+.sub-card:nth-child(n+5){animation-delay:.22s}
 </style>
 </head>
 <body>
 
-<!-- ── Navigation ──────────────────────────────────────────────────────── -->
-<nav>
-  <a class="nav-brand" href="/">
-    <div class="logo-box">
-      <!-- ResiQuant's X/asterisk mark -->
-      <svg viewBox="0 0 12 12" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.6" stroke-linecap="round">
-        <line x1="2" y1="2" x2="10" y2="10"/>
-        <line x1="10" y1="2" x2="2" y2="10"/>
-        <line x1="6"  y1="1" x2="6"  y2="11"/>
-        <line x1="1"  y1="6" x2="11" y2="6"/>
-      </svg>
-    </div>
-    <span class="nav-wordmark">ResiQuant</span>
-  </a>
+<!-- Nav -->
+<nav id="nav">
+  <a class="nav-brand" href="/"><span class="nav-wordmark">ResiQuant</span></a>
   <div class="nav-actions">
     <a class="nav-btn" href="/docs" target="_blank">API docs</a>
     <a class="nav-btn" href="/metrics" target="_blank">Metrics</a>
-    <div class="nav-pill">
-      <span class="pulse"></span>
-      Online
-    </div>
+    <div class="nav-pill"><span class="pulse"></span>Online</div>
   </div>
 </nav>
 
-<!-- ── Page ─────────────────────────────────────────────────────────────── -->
 <div class="page">
 
   <!-- Header -->
   <div class="page-header">
     <div class="wrap">
-      <div class="eyebrow"><span class="eyebrow-line"></span>Submission Intelligence</div>
-      <h1 class="page-title">Extract broker &amp; property data <em>in seconds</em></h1>
-      <p class="page-sub">Upload insurance submission emails and attachments. Get structured broker info and property addresses with confidence scores.</p>
+      <div class="eyebrow hero-line"><span class="eyebrow-line"></span>Submission Intelligence</div>
+      <h1 class="page-title hero-line">Extract broker &amp; property data <em style="font-style:normal">instantly</em></h1>
+      <p class="page-sub hero-line">Drop any number of files — emails, spreadsheets, attachments. Get structured broker info and property addresses back in seconds.</p>
     </div>
   </div>
 
-  <!-- Tab bar -->
+  <!-- Content -->
   <div class="wrap">
-    <div class="tab-bar">
-      <div class="tabs">
-        <button class="tab active" id="tab-single" onclick="switchTab('single')">Single submission</button>
-        <button class="tab"        id="tab-batch"  onclick="switchTab('batch')">Batch</button>
-      </div>
-      <span class="tab-note" id="tab-note">Email PDF + attachments</span>
-    </div>
-  </div>
+    <div class="main-content">
 
-  <!-- ── Single panel ──────────────────────────────────────────────────── -->
-  <div id="panel-single">
-    <div class="wrap">
-      <div class="two-col">
-
-        <!-- Upload -->
-        <div>
-          <div class="card">
-            <div class="card-head">
-              <span class="card-label">Files</span>
-            </div>
-            <div class="card-body">
-              <div class="drop" id="dz"
-                onclick="document.getElementById('fi').click()"
-                ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event)">
-                <input id="fi" type="file" multiple accept=".pdf,.xlsx,.xls,.docx" onchange="onPick(this.files)"/>
-                <div class="drop-icon-wrap">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
-                  </svg>
-                </div>
-                <div class="drop-title">Drop files here</div>
-                <div class="drop-sub">or click to browse</div>
-                <div class="drop-tags">
-                  <span class="tag">PDF</span>
-                  <span class="tag">XLSX</span>
-                  <span class="tag">XLS</span>
-                  <span class="tag">DOCX</span>
-                </div>
+      <!-- Left: upload -->
+      <div class="reveal">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-label">Files</span>
+            <span class="card-count" id="file-count" style="display:none">0 files</span>
+          </div>
+          <div class="card-body">
+            <div class="drop" id="dz"
+              onclick="document.getElementById('fi').click()"
+              ondragover="onDragOver(event,this)"
+              ondragleave="onDragLeave(this)"
+              ondrop="onDrop(event)">
+              <input id="fi" type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.zip" onchange="onPick(this.files)"/>
+              <div class="drop-icon-wrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
+                </svg>
               </div>
-              <div class="file-list" id="fl"></div>
+              <div class="drop-title">Drop files here</div>
+              <div class="drop-sub">PDFs, spreadsheets, Word docs — any number of submissions</div>
+              <div class="drop-tags">
+                <span class="tag">PDF</span>
+                <span class="tag">XLSX</span>
+                <span class="tag">XLS</span>
+                <span class="tag">DOCX</span>
+                <span class="tag">ZIP</span>
+              </div>
             </div>
-          </div>
-
-          <div class="btn-row">
-            <button class="btn btn-white" id="ex-btn" onclick="doExtract()" disabled>Extract data</button>
-            <button class="btn btn-ghost" id="cl-btn" onclick="clearSingle()" style="display:none">Clear</button>
+            <div class="file-list" id="fl"></div>
           </div>
         </div>
-
-        <!-- Results -->
-        <div id="results-col">
-          <div class="placeholder" id="rph">
-            <div class="ph-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-            </div>
-            Upload files and click Extract
-          </div>
+        <div class="btn-row">
+          <button class="btn btn-black" id="ex-btn" onclick="doExtract()" disabled>Extract</button>
+          <button class="btn btn-ghost" id="cl-btn" onclick="clearAll()" style="display:none">Clear</button>
         </div>
-
       </div>
+
+      <!-- Right: results -->
+      <div class="results-col reveal" style="--d:80ms" id="results-col">
+        <div class="placeholder" id="rph">
+          <div class="ph-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          Drop files and click Extract to see results
+        </div>
+      </div>
+
     </div>
   </div>
-
-  <!-- ── Batch panel ────────────────────────────────────────────────────── -->
-  <div id="panel-batch">
-    <div class="wrap">
-      <div class="batch-wrap">
-
-        <div class="batch-upload">
-          <div class="card-label" style="margin-bottom:16px">Upload submissions</div>
-
-          <div class="drop" id="bdz"
-            onclick="document.getElementById('bfi').click()"
-            ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onBatchDrop(event)">
-            <input id="bfi" type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.zip" onchange="onBatchPick(this.files)"/>
-            <div class="drop-icon-wrap">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
-              </svg>
-            </div>
-            <div class="drop-title">Drop multiple submissions</div>
-            <div class="drop-sub">ZIP files or all files flat</div>
-            <div class="drop-tags">
-              <span class="tag">ZIP</span>
-              <span class="tag">PDF</span>
-              <span class="tag">XLSX</span>
-              <span class="tag">DOCX</span>
-            </div>
-          </div>
-
-          <div class="file-list" id="bfl"></div>
-
-          <div class="batch-modes">
-            <div class="mode-tile">
-              <div class="mode-tile-title">ZIP mode</div>
-              <div class="mode-tile-desc">One .zip per submission. Each archive contains the email PDF plus attachments.</div>
-            </div>
-            <div class="mode-tile">
-              <div class="mode-tile-title">Flat upload</div>
-              <div class="mode-tile-desc">Upload all files together. Email PDFs are auto-detected and grouped with attachments.</div>
-            </div>
-          </div>
-
-          <div class="batch-btn-row">
-            <button class="btn btn-white" id="bex-btn" onclick="doBatch()" disabled>Extract all</button>
-            <button class="btn btn-ghost" id="bcl-btn" onclick="clearBatch()" style="display:none">Clear</button>
-          </div>
-        </div>
-
-        <div class="batch-results" id="batch-results"></div>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /page -->
+</div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
-let sFiles = [], bFiles = [];
+let files = [];
 
-// ── Tab switching ──────────────────────────────────────────────────────────
-function switchTab(t) {
-  document.getElementById('panel-single').style.display = t === 'single' ? '' : 'none';
-  const bp = document.getElementById('panel-batch');
-  bp.style.display = t === 'batch' ? 'block' : 'none';
-  bp.classList.toggle('show', t === 'batch');
-  document.getElementById('tab-single').classList.toggle('active', t === 'single');
-  document.getElementById('tab-batch').classList.toggle('active', t === 'batch');
-  document.getElementById('tab-note').textContent =
-    t === 'single' ? 'Email PDF + attachments' : 'Multiple submissions at once';
-}
-
-// ── Drag helpers ───────────────────────────────────────────────────────────
+// ── Drag & drop ────────────────────────────────────────────────────────────
 function onDragOver(e, el) { e.preventDefault(); el.classList.add('over'); }
 function onDragLeave(el)   { el.classList.remove('over'); }
-function onDrop(e)  { e.preventDefault(); document.getElementById('dz').classList.remove('over'); onPick(e.dataTransfer.files); }
-function onBatchDrop(e) { e.preventDefault(); document.getElementById('bdz').classList.remove('over'); onBatchPick(e.dataTransfer.files); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('over');
+  onPick(e.dataTransfer.files);
+}
 
-// ── File handling ──────────────────────────────────────────────────────────
+// ── File pick ──────────────────────────────────────────────────────────────
 function onPick(fl) {
-  sFiles = Array.from(fl);
-  renderChips(sFiles, 'fl', 's');
-  document.getElementById('ex-btn').disabled = !sFiles.length;
-  document.getElementById('cl-btn').style.display = sFiles.length ? '' : 'none';
+  // Merge new files in (avoid duplicates by name+size)
+  const existing = new Set(files.map(f => f.name + f.size));
+  Array.from(fl).forEach(f => { if (!existing.has(f.name + f.size)) files.push(f); });
+  renderChips();
+  syncButtons();
 }
-function onBatchPick(fl) {
-  bFiles = Array.from(fl);
-  renderChips(bFiles, 'bfl', 'b');
-  document.getElementById('bex-btn').disabled = !bFiles.length;
-  document.getElementById('bcl-btn').style.display = bFiles.length ? '' : 'none';
-}
-function renderChips(files, cid, prefix) {
-  document.getElementById(cid).innerHTML = files.map((f,i) => `
-    <div class="file-chip">
+
+function renderChips() {
+  const el = document.getElementById('fl');
+  el.innerHTML = files.map((f, i) => `
+    <div class="file-chip chip-enter" style="animation-delay:${i*50}ms">
       <span class="file-dot"></span>
       <span class="file-name">${esc(f.name)}</span>
       <span class="file-sz">${fmtSz(f.size)}</span>
-      <button class="file-rm" onclick="rmFile(${i},'${prefix}')" title="Remove">✕</button>
+      <button class="file-rm" onclick="rmFile(${i})" title="Remove">✕</button>
     </div>`).join('');
-}
-function rmFile(i, p) {
-  if (p === 's') {
-    sFiles.splice(i,1); renderChips(sFiles,'fl','s');
-    document.getElementById('ex-btn').disabled = !sFiles.length;
-    document.getElementById('cl-btn').style.display = sFiles.length ? '' : 'none';
+
+  const cnt = document.getElementById('file-count');
+  if (files.length) {
+    cnt.textContent = files.length === 1 ? '1 file' : `${files.length} files`;
+    cnt.style.display = '';
   } else {
-    bFiles.splice(i,1); renderChips(bFiles,'bfl','b');
-    document.getElementById('bex-btn').disabled = !bFiles.length;
-    document.getElementById('bcl-btn').style.display = bFiles.length ? '' : 'none';
+    cnt.style.display = 'none';
   }
 }
-function clearSingle() {
-  sFiles = []; document.getElementById('fi').value = '';
-  renderChips([],'fl','s');
-  document.getElementById('ex-btn').disabled = true;
-  document.getElementById('cl-btn').style.display = 'none';
-  document.getElementById('results-col').innerHTML = phHTML();
-}
-function clearBatch() {
-  bFiles = []; document.getElementById('bfi').value = '';
-  renderChips([],'bfl','b');
-  document.getElementById('bex-btn').disabled = true;
-  document.getElementById('bcl-btn').style.display = 'none';
-  document.getElementById('batch-results').innerHTML = '';
-}
-function phHTML() {
-  return `<div class="placeholder" id="rph">
-    <div class="ph-icon">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
-    </div>
-    Upload files and click Extract
-  </div>`;
+
+function rmFile(i) {
+  files.splice(i, 1);
+  renderChips();
+  syncButtons();
 }
 
-// ── Single extract ─────────────────────────────────────────────────────────
+function syncButtons() {
+  document.getElementById('ex-btn').disabled = files.length === 0;
+  document.getElementById('cl-btn').style.display = files.length ? '' : 'none';
+}
+
+function clearAll() {
+  files = [];
+  document.getElementById('fi').value = '';
+  renderChips();
+  syncButtons();
+  document.getElementById('results-col').innerHTML = `
+    <div class="placeholder" id="rph">
+      <div class="ph-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      Drop files and click Extract to see results
+    </div>`;
+}
+
+// ── Extract ────────────────────────────────────────────────────────────────
 async function doExtract() {
   const btn = document.getElementById('ex-btn');
   const col = document.getElementById('results-col');
+
   btn.disabled = true;
   btn.innerHTML = '<div class="spin"></div>Extracting…';
-  col.innerHTML = '<div class="loading"><div class="spin-g"></div><div class="loading-text">Analysing documents…</div></div>';
+  col.innerHTML = '<div class="loading"><div class="spin-g"></div><div class="loading-text">Analysing documents</div></div>';
+
   const fd = new FormData();
-  sFiles.forEach(f => fd.append('files', f));
+  files.forEach(f => fd.append('files', f));
+
   try {
-    const r = await fetch('/extract', { method:'POST', body:fd });
+    const r = await fetch('/batch-extract', { method: 'POST', body: fd });
     if (!r.ok) throw new Error(`${r.status} — ${await r.text()}`);
-    col.innerHTML = renderResult(await r.json());
+    const data = await r.json();
+
+    if (data.submissions.length === 1) {
+      // Single result — show full detail view
+      col.innerHTML = renderFullResult(data.submissions[0].result);
+    } else {
+      // Multiple results — show stacked cards
+      col.innerHTML = data.submissions.map((s, i) => renderSubCard(s, i)).join('');
+    }
   } catch(e) {
     col.innerHTML = `<div class="err-row"><span>⚠</span><span>${esc(e.message)}</span></div>`;
   } finally {
     btn.disabled = false;
-    btn.innerHTML = 'Extract data';
+    btn.innerHTML = 'Extract';
   }
 }
 
-// ── Batch extract ──────────────────────────────────────────────────────────
-async function doBatch() {
-  const btn = document.getElementById('bex-btn');
-  const out = document.getElementById('batch-results');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spin"></div>Processing…';
-  out.innerHTML = '<div class="loading"><div class="spin-g"></div><div class="loading-text">Processing submissions…</div></div>';
-  const fd = new FormData();
-  bFiles.forEach(f => fd.append('files', f));
-  try {
-    const r = await fetch('/batch-extract', { method:'POST', body:fd });
-    if (!r.ok) throw new Error(`${r.status} — ${await r.text()}`);
-    const data = await r.json();
-    out.innerHTML = data.submissions.map((s,i) => renderSub(s,i)).join('');
-  } catch(e) {
-    out.innerHTML = `<div class="err-row"><span>⚠</span><span>${esc(e.message)}</span></div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Extract all';
-  }
-}
-
-// ── Render result ──────────────────────────────────────────────────────────
-function renderResult(d) {
-  const lat   = d.latency_ms != null ? `${Math.round(d.latency_ms)}ms` : null;
-  const tok   = d.token_usage ? `${d.token_usage.total_tokens.toLocaleString()} tok` : null;
-  const cost  = d.token_usage?.estimated_cost_usd != null ? `$${d.token_usage.estimated_cost_usd.toFixed(4)}` : null;
+// ── Render: single full result ─────────────────────────────────────────────
+function renderFullResult(d) {
+  const lat  = d.latency_ms != null ? `${Math.round(d.latency_ms)}ms` : null;
+  const tok  = d.token_usage ? `${d.token_usage.total_tokens.toLocaleString()} tok` : null;
+  const cost = d.token_usage?.estimated_cost_usd != null ? `$${d.token_usage.estimated_cost_usd.toFixed(4)}` : null;
   const chips = [lat, tok, cost].filter(Boolean).map(v => `<span class="chip">${v}</span>`).join('');
   const errs  = (d.errors||[]).map(e => `<div class="err-row"><span>⚠</span><span>${esc(e)}</span></div>`).join('');
 
@@ -809,13 +554,44 @@ function renderResult(d) {
   </div>`;
 }
 
+// ── Render: one card in a multi-result list ────────────────────────────────
+function renderSubCard(sub, i) {
+  const d = sub.result;
+  const lat = d.latency_ms ? `${Math.round(d.latency_ms)}ms` : null;
+
+  return `<div class="result-card sub-card">
+    <div class="result-top">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+        <div class="addr-n" style="width:22px;height:22px;font-size:10px;flex-shrink:0">${i+1}</div>
+        <span class="result-id">${esc(sub.submission_id)}</span>
+      </div>
+      <div class="chip-row">
+        ${d.cache_hit ? '<span class="badge badge-cached">Cached</span>' : ''}
+        ${lat ? `<span class="chip">${lat}</span>` : ''}
+      </div>
+    </div>
+    <div class="rsec">
+      <div class="sec-label">Broker</div>
+      ${fRow(d.broker_name,  'Name')}
+      ${fRow(d.broker_email, 'Email')}
+      ${fRow(d.brokerage,    'Brokerage')}
+      ${fRow(d.complete_brokerage_address, 'Address')}
+    </div>
+    <div class="rsec">
+      <div class="sec-label">Properties (${d.property_addresses?.length||0})</div>
+      ${addrList(d.property_addresses)}
+    </div>
+  </div>`;
+}
+
+// ── Field row ──────────────────────────────────────────────────────────────
 function fRow(field, label) {
   if (!field) return '';
-  const v    = field.value;
-  const c    = field.confidence ?? 0;
-  const p    = field.provenance;
-  const cls  = c >= .8 ? 'c-hi' : c >= .5 ? 'c-md' : 'c-lo';
-  const pct  = Math.round(c * 100);
+  const v   = field.value;
+  const c   = field.confidence ?? 0;
+  const p   = field.provenance;
+  const cls = c >= .8 ? 'c-hi' : c >= .5 ? 'c-md' : 'c-lo';
+  const pct = Math.round(c * 100);
   const provHTML = p ? `<span class="prov">${esc(p.doc_name)}${p.page!=null?`<span class="prov-sep"> · </span>p${p.page}`:''}${p.snippet?`<span class="prov-sep"> · </span>${esc(p.snippet.slice(0,36))}…`:''}</span>` : '';
   return `<div class="f-row">
     <div class="f-left">
@@ -829,6 +605,7 @@ function fRow(field, label) {
   </div>`;
 }
 
+// ── Address list ───────────────────────────────────────────────────────────
 function addrList(addrs) {
   if (!addrs || !addrs.length) return '<div style="font-size:12px;color:var(--text-3)">No addresses found</div>';
   return `<div class="addr-list">${addrs.map((a,i) => `
@@ -839,53 +616,24 @@ function addrList(addrs) {
     </div>`).join('')}</div>`;
 }
 
-function renderSub(sub, i) {
-  const d = sub.result;
-  const lat = d.latency_ms ? `${Math.round(d.latency_ms)}ms` : null;
-  return `<div class="sub-card">
-    <div class="sub-head">
-      <div class="sub-n">${i+1}</div>
-      <div class="sub-id">${esc(sub.submission_id)}</div>
-      ${d.cache_hit ? '<span class="badge badge-cached">Cached</span>' : ''}
-      ${lat ? `<span class="chip">${lat}</span>` : ''}
-    </div>
-    <div class="sub-body">
-      <div class="sub-grid">
-        <div>
-          <div class="sub-field-title">Broker</div>
-          <div class="sub-field-val">${esc(d.broker_name?.value||'—')}</div>
-          <div class="sub-field-sub">${esc(d.broker_email?.value||'')}</div>
-        </div>
-        <div>
-          <div class="sub-field-title">Brokerage</div>
-          <div class="sub-field-val">${esc(d.brokerage?.value||'—')}</div>
-          <div class="sub-field-sub">${esc((d.complete_brokerage_address?.value||'').slice(0,55))}</div>
-        </div>
-      </div>
-      ${d.property_addresses?.length ? `
-        <div class="sub-field-title" style="margin-bottom:6px">Properties (${d.property_addresses.length})</div>
-        <div class="addr-list">
-          ${d.property_addresses.slice(0,3).map((a,j)=>`
-            <div class="addr-row">
-              <div class="addr-n">${j+1}</div>
-              <div class="addr-v">${esc(a.address)}</div>
-              <div class="addr-c">${Math.round(a.confidence*100)}%</div>
-            </div>`).join('')}
-          ${d.property_addresses.length>3 ? `<div style="font-size:11px;color:var(--text-3);padding:6px 12px">+${d.property_addresses.length-3} more</div>` : ''}
-        </div>` : ''}
-      ${(d.errors||[]).map(e=>`<div class="err-row" style="margin-top:8px"><span>⚠</span><span>${esc(e)}</span></div>`).join('')}
-    </div>
-  </div>`;
-}
+// ── Scroll & reveal ────────────────────────────────────────────────────────
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 8);
+}, { passive: true });
 
-// ── Utilities ──────────────────────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
+}, { threshold: 0.08, rootMargin: '0px 0px -24px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Utils ──────────────────────────────────────────────────────────────────
 function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function fmtSz(b) {
-  if (b < 1024) return b+'B';
-  if (b < 1048576) return (b/1024).toFixed(1)+'KB';
+  if (b<1024) return b+'B';
+  if (b<1048576) return (b/1024).toFixed(1)+'KB';
   return (b/1048576).toFixed(1)+'MB';
 }
 </script>
