@@ -30,6 +30,9 @@ Rules:
 - confidence is a float 0.0–1.0 representing how certain you are.
 - provenance must name the exact doc_name, page number (null if not applicable), and a short verbatim snippet (<120 chars) from that document.
 - property_addresses: list ONLY the physical insured property locations — the buildings or sites being covered by the policy.
+  SOURCE PRIORITY: If a Schedule of Values (SOV) spreadsheet or table is present among the documents, extract
+  property addresses FROM THE SOV ONLY. Do NOT also pull addresses from the email body — the SOV is always
+  the authoritative and complete list. Only fall back to the email body if no SOV or location table exists.
   DO NOT include: applicant/owner mailing addresses, LLC mailing addresses, broker office addresses, or any address
   labeled "Mailing Address" unless it is explicitly also labeled as the insured location.
   In forms with separate "Mailing Address" and "Building Information / Location" sections, use ONLY the building/location address.
