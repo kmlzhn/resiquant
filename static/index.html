@@ -966,7 +966,7 @@ async function saveFieldCorrection(rowId) {
 function startAddrEdit(rowId) {
   const row = document.getElementById(rowId);
   row.querySelector('.addr-display').style.display = 'none';
-  row.querySelector('.addr-edit-mode').style.display = '';
+  row.querySelector('.addr-edit-mode').style.display = 'block';
   const inp = document.getElementById(rowId + '-inp');
   inp.focus(); inp.select();
 }
