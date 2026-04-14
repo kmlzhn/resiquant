@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.extractor import extract
 from app.parser import parse_file
 
-DATA_DIR = Path("/Users/kamilazhandildayeva/Documents/submission_files")
+DATA_DIR = Path(os.getenv("SUBMISSION_DATA_DIR", "/Users/kamilazhandildayeva/Documents/submission_files"))
 
 # Ground truth for broker fields (from manual inspection)
 EXPECTED = {

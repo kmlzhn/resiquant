@@ -23,15 +23,21 @@ def validate_broker_email(value: str | None) -> list[str]:
 
 
 def validate_brokerage_address(value: str | None) -> list[str]:
-    """Address must contain at least a street number/name, city, and state."""
+    """Address must contain at least a street number/name, a city-like word, and a US state."""
     errors = []
     if not value:
         return errors
     v = value.strip()
     has_street = bool(re.search(r"\d+\s+\w+", v))
     has_state = any(f" {s}" in f" {v.upper()}" or f",{s}" in f",{v.upper()}" for s in US_STATES)
+    # City heuristic: there must be at least two comma-separated segments (street, city[, state...])
+    # or a word that appears between the street portion and the state abbreviation.
+    parts = [p.strip() for p in v.split(",")]
+    has_city = len(parts) >= 2 and len(parts[1]) >= 2
     if not has_street:
         errors.append(f"complete_brokerage_address missing street number: '{v}'")
+    if not has_city:
+        errors.append(f"complete_brokerage_address missing city: '{v}'")
     if not has_state:
         errors.append(f"complete_brokerage_address missing US state abbreviation: '{v}'")
     return errors

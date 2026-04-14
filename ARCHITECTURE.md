@@ -64,7 +64,7 @@ Each example shows the exact input format (document blocks with `[Page N]` label
 | Field | Rule |
 |---|---|
 | `broker_email` | Must match `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$` |
-| `complete_brokerage_address` | Must contain a street number + US state abbreviation |
+| `complete_brokerage_address` | Must contain a street number, a city segment (comma-separated), and a US state abbreviation |
 
 Validation errors are returned in the `errors[]` array alongside the result — the LLM output is still surfaced for human review rather than rejected.
 
@@ -119,5 +119,3 @@ The `app/llm.py` module is the single integration point. Swapping providers requ
 | In-memory metrics | Zero ops overhead; lost on restart — use Prometheus in production |
 | 6k char cap per page | Prevents token blowup on large SOVs; raised from 4k to capture broker signatures in long forwarded email chains |
 | Auto email-grouping | Enables flat upload UX; heuristic (`From:` + `To:/Subject:` in first 500 chars) may misfire on non-standard PDFs |
-</content>
-</invoke>

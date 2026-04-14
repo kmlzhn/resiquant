@@ -52,7 +52,8 @@ Prompts live in `app/extractor.py`:
 ### Step 1 — Identify what text the parser sees
 ```python
 from app.parser import parse_file
-doc = parse_file("path/to/file.pdf")
+content = open("path/to/file.pdf", "rb").read()
+doc = parse_file("file.pdf", content)
 print(doc.full_text)
 ```
 

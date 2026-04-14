@@ -89,6 +89,6 @@ Location 3: 2969 Wilshire Blvd, Los Angeles, CA 90010
 ## Key Design Decisions
 
 - **temperature: 0.0** — deterministic output, essential for consistent caching
-- **4000 char cap per page** — prevents token overflow on large SOV spreadsheets
+- **6000 char cap per page** — prevents token overflow on large SOV spreadsheets while still capturing broker signatures in long forwarded email chains (raised from an initial 4000 after testing showed truncation)
 - **Provenance required** — forces the model to cite its source, enabling human verification
 - **Null fallback** — model is explicitly told to use null rather than guess, reducing hallucination
