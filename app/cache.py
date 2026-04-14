@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -9,29 +10,39 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 _CACHE_DIR = Path(os.getenv("CACHE_DIR", "cache"))
-
-
-def _ensure_dir() -> Path:
-    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    return _CACHE_DIR
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def compute_hash(files_content: list[bytes]) -> str:
-    """SHA256 over all file bytes concatenated."""
+    """Order-independent hash: SHA256 each file, sort the digests, hash the sorted list."""
+    digests = sorted(hashlib.sha256(c).hexdigest() for c in files_content)
     h = hashlib.sha256()
-    for content in files_content:
-        h.update(content)
+    for d in digests:
+        h.update(d.encode())
     return h.hexdigest()
 
 
 def get(source_hash: str) -> dict | None:
-    path = _ensure_dir() / f"{source_hash}.json"
-    if path.exists():
+    path = _CACHE_DIR / f"{source_hash}.json"
+    if not path.exists():
+        return None
+    try:
         return json.loads(path.read_text())
-    return None
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("cache_corrupt key=%s (%s) — deleting", source_hash[:12], e)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
 
 
 def put(source_hash: str, result: dict) -> None:
-    path = _ensure_dir() / f"{source_hash}.json"
-    path.write_text(json.dumps(result, indent=2))
+    path = _CACHE_DIR / f"{source_hash}.json"
+    try:
+        path.write_text(json.dumps(result, indent=2))
+    except OSError as e:
+        logger.warning("cache_write_error key=%s: %s", source_hash[:12], e)

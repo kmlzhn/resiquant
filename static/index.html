@@ -251,6 +251,57 @@ nav {
 /* ── Results column ────────────────────────────────────────────────────── */
 .results-col { display:flex; flex-direction:column; gap:16px; }
 
+/* ── View toggle (Card / JSON) ─────────────────────────────────────────── */
+.view-toggle-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:4px;
+}
+.view-toggle {
+  display:inline-flex;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:3px; gap:2px;
+}
+.vt-btn {
+  padding:5px 14px; font-family:var(--font); font-size:12px; font-weight:500;
+  border:none; border-radius:4px; cursor:pointer;
+  background:transparent; color:var(--text-3);
+  transition:all 0.13s; letter-spacing:0.01em;
+}
+.vt-btn.active { background:var(--surface-3); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+
+/* copy button */
+.copy-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 10px; font-family:var(--font); font-size:11px; font-weight:500;
+  border:1px solid var(--border-mid); border-radius:var(--r-sm);
+  background:transparent; color:var(--text-3); cursor:pointer;
+  transition:all 0.13s;
+}
+.copy-btn:hover { border-color:var(--border-high); color:var(--text); }
+.copy-btn.copied { color:#1a7f37; border-color:rgba(26,127,55,0.3); }
+
+/* JSON block */
+.json-block {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  overflow:hidden; animation: up 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+.json-inner {
+  padding:20px; overflow-x:auto;
+  max-height:600px; overflow-y:auto;
+}
+.json-inner::-webkit-scrollbar { width:4px; height:4px; }
+.json-inner::-webkit-scrollbar-thumb { background:#d0d0d0; border-radius:2px; }
+pre.json-code {
+  font-family: 'SF Mono','Fira Code','Fira Mono','Roboto Mono',monospace;
+  font-size:12px; line-height:1.7; color:var(--text-2);
+  white-space:pre; margin:0;
+}
+/* syntax colouring */
+.jk { color:#0c0c0c; font-weight:500; }   /* key */
+.js { color:#1a7f37; }                     /* string value */
+.jn { color:#c87d00; }                     /* number */
+.jb { color:#8250df; }                     /* boolean / null */
+
 .placeholder {
   border:1px dashed var(--border); border-radius:var(--r-lg);
   padding:52px 24px; text-align:center; color:var(--text-3);
@@ -409,14 +460,29 @@ nav {
       </div>
 
       <!-- Right: results -->
-      <div class="results-col reveal" style="--d:80ms" id="results-col">
-        <div class="placeholder" id="rph">
-          <div class="ph-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+      <div class="reveal" style="--d:80ms">
+        <!-- Toggle bar — hidden until results arrive -->
+        <div class="view-toggle-bar" id="toggle-bar" style="display:none">
+          <div class="view-toggle">
+            <button class="vt-btn active" id="vt-card" onclick="setView('card')">Card</button>
+            <button class="vt-btn"        id="vt-json" onclick="setView('json')">JSON</button>
           </div>
-          Drop files and click Extract to see results
+          <button class="copy-btn" id="copy-btn" onclick="copyJSON()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+        <div class="results-col" id="results-col">
+          <div class="placeholder" id="rph">
+            <div class="ph-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            Drop files and click Extract to see results
+          </div>
         </div>
       </div>
 
@@ -426,6 +492,8 @@ nav {
 
 <script>
 let files = [];
+let lastData = null;   // stores raw API response for JSON view
+let currentView = 'card';
 
 // ── Drag & drop ────────────────────────────────────────────────────────────
 function onDragOver(e, el) { e.preventDefault(); el.classList.add('over'); }
@@ -476,10 +544,11 @@ function syncButtons() {
 }
 
 function clearAll() {
-  files = [];
+  files = []; lastData = null; currentView = 'card';
   document.getElementById('fi').value = '';
   renderChips();
   syncButtons();
+  document.getElementById('toggle-bar').style.display = 'none';
   document.getElementById('results-col').innerHTML = `
     <div class="placeholder" id="rph">
       <div class="ph-icon">
@@ -507,20 +576,134 @@ async function doExtract() {
     const r = await fetch('/batch-extract', { method: 'POST', body: fd });
     if (!r.ok) throw new Error(`${r.status} — ${await r.text()}`);
     const data = await r.json();
-
-    if (data.submissions.length === 1) {
-      // Single result — show full detail view
-      col.innerHTML = renderFullResult(data.submissions[0].result);
-    } else {
-      // Multiple results — show stacked cards
-      col.innerHTML = data.submissions.map((s, i) => renderSubCard(s, i)).join('');
-    }
+    lastData = data;
+    currentView = 'card';
+    document.getElementById('vt-card').classList.add('active');
+    document.getElementById('vt-json').classList.remove('active');
+    document.getElementById('toggle-bar').style.display = '';
+    renderCardView(data, col);
   } catch(e) {
+    lastData = null;
+    document.getElementById('toggle-bar').style.display = 'none';
     col.innerHTML = `<div class="err-row"><span>⚠</span><span>${esc(e.message)}</span></div>`;
   } finally {
     btn.disabled = false;
     btn.innerHTML = 'Extract';
   }
+}
+
+// ── View switching ─────────────────────────────────────────────────────────
+function setView(v) {
+  if (!lastData) return;
+  currentView = v;
+  document.getElementById('vt-card').classList.toggle('active', v === 'card');
+  document.getElementById('vt-json').classList.toggle('active', v === 'json');
+  const col = document.getElementById('results-col');
+  if (v === 'card') {
+    renderCardView(lastData, col);
+  } else {
+    col.innerHTML = renderJSONView(lastData);
+  }
+}
+
+function renderCardView(data, col) {
+  if (data.submissions.length === 1) {
+    col.innerHTML = renderFullResult(data.submissions[0].result);
+  } else {
+    col.innerHTML = data.submissions.map((s, i) => renderSubCard(s, i)).join('');
+  }
+}
+
+// ── JSON view ──────────────────────────────────────────────────────────────
+function renderJSONView(data) {
+  const total = data.submissions.length;
+  const objs  = data.submissions.map(s => toCleanJSON(s, total));
+  const payload = total === 1 ? objs[0] : objs;
+  const highlighted = syntaxHighlight(JSON.stringify(payload, null, 2));
+  return `<div class="json-block">
+    <div class="json-inner"><pre class="json-code">${highlighted}</pre></div>
+  </div>`;
+}
+
+// Flatten the nested FieldResult/provenance into the clean shape the user wants
+function toCleanJSON(sub, total) {
+  const d = sub.result;
+  const prov = {};
+
+  ['broker_name','broker_email','brokerage','complete_brokerage_address'].forEach(k => {
+    const f = d[k];
+    if (!f) return;
+    if (f.provenance?.snippet) {
+      prov[k] = `${f.provenance.doc_name}${f.provenance.page != null ? ' p' + f.provenance.page : ''} — ${f.provenance.snippet.slice(0, 60)}`;
+    } else if (f.provenance?.doc_name) {
+      prov[k] = f.provenance.doc_name;
+    }
+  });
+
+  if (d.property_addresses?.length) {
+    const sources = d.property_addresses
+      .filter(a => a.provenance?.doc_name)
+      .map(a => `${a.provenance.doc_name}${a.provenance.page != null ? ' p' + a.provenance.page : ''}`);
+    if (sources.length) prov['property_addresses'] = [...new Set(sources)].join(', ');
+  }
+
+  // Overall confidence = average of all field confidences
+  const confs = ['broker_name','broker_email','brokerage','complete_brokerage_address']
+    .map(k => d[k]?.confidence ?? 0);
+  const avgConf = Math.round((confs.reduce((a, b) => a + b, 0) / confs.length) * 100) / 100;
+
+  const obj = {
+    broker_name:                d.broker_name?.value ?? null,
+    broker_email:               d.broker_email?.value ?? null,
+    brokerage:                  d.brokerage?.value ?? null,
+    complete_brokerage_address: d.complete_brokerage_address?.value ?? null,
+    property_addresses:         (d.property_addresses || []).map(a => a.address),
+    confidence:                 avgConf,
+    provenance:                 prov,
+    meta: {
+      request_id: d.request_id,
+      cache_hit:  d.cache_hit,
+      latency_ms: d.latency_ms ? Math.round(d.latency_ms) : null,
+      ...(d.token_usage ? {
+        tokens:   d.token_usage.total_tokens,
+        cost_usd: d.token_usage.estimated_cost_usd
+      } : {})
+    }
+  };
+
+  // For multi-submission responses, include the submission id
+  return total > 1 ? { submission_id: sub.submission_id, ...obj } : obj;
+}
+
+// Minimal syntax highlighter
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+      if (/^"/.test(m)) {
+        if (/:$/.test(m)) return `<span class="jk">${m}</span>`;
+        return `<span class="js">${m}</span>`;
+      }
+      if (/true|false|null/.test(m)) return `<span class="jb">${m}</span>`;
+      return `<span class="jn">${m}</span>`;
+    });
+}
+
+// ── Copy JSON ──────────────────────────────────────────────────────────────
+function copyJSON() {
+  if (!lastData) return;
+  const total = lastData.submissions.length;
+  const objs  = lastData.submissions.map(s => toCleanJSON(s, total));
+  const payload = total === 1 ? objs[0] : objs;
+  navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy`;
+    }, 2000);
+  });
 }
 
 // ── Render: single full result ─────────────────────────────────────────────

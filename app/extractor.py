@@ -102,30 +102,41 @@ EXPECTED OUTPUT:
 
 
 def build_user_prompt(docs: list[ParsedDocument]) -> str:
+    """
+    Build the LLM user prompt from all parsed documents.
+
+    Each page is labelled with its document name and page number so the LLM
+    can produce accurate provenance. Cap raised to 6000 chars/page (was 4000)
+    to avoid truncating broker signatures buried in long email bodies.
+    """
     parts = [FEW_SHOT, "\nNow extract from the following documents:\n"]
     for doc in docs:
-        parts.append(f"\n--- DOCUMENT: {doc.name} ---")
-        for page_text in doc.pages:
-            parts.append(page_text[:4000])  # cap per page to avoid token blowup
+        for page_idx, page_text in enumerate(doc.pages, start=1):
+            header = f"\n--- DOCUMENT: {doc.name}  [Page {page_idx}] ---"
+            parts.append(header)
+            parts.append(page_text[:6000])
     parts.append("\nReturn ONLY the JSON object:")
     return "\n".join(parts)
 
 
-def _build_field(raw: Any, key: str) -> FieldResult:
+def _build_provenance(raw: Any) -> Provenance | None:
+    """Convert a raw provenance dict from the LLM into a Provenance model."""
+    if not isinstance(raw, dict):
+        return None
+    return Provenance(
+        doc_name=raw.get("doc_name", ""),
+        page=raw.get("page"),
+        snippet=raw.get("snippet", ""),
+    )
+
+
+def _build_field(raw: Any) -> FieldResult:
     if not isinstance(raw, dict):
         return FieldResult(value=None, confidence=0.0)
-    prov_raw = raw.get("provenance")
-    prov = None
-    if isinstance(prov_raw, dict):
-        prov = Provenance(
-            doc_name=prov_raw.get("doc_name", ""),
-            page=prov_raw.get("page"),
-            snippet=prov_raw.get("snippet", ""),
-        )
     return FieldResult(
         value=raw.get("value"),
         confidence=float(raw.get("confidence", 0.0)),
-        provenance=prov,
+        provenance=_build_provenance(raw.get("provenance")),
     )
 
 
@@ -136,18 +147,10 @@ def _build_addresses(raw: Any) -> list[PropertyAddress]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        prov_raw = item.get("provenance")
-        prov = None
-        if isinstance(prov_raw, dict):
-            prov = Provenance(
-                doc_name=prov_raw.get("doc_name", ""),
-                page=prov_raw.get("page"),
-                snippet=prov_raw.get("snippet", ""),
-            )
         result.append(PropertyAddress(
             address=item.get("address", ""),
             confidence=float(item.get("confidence", 0.0)),
-            provenance=prov,
+            provenance=_build_provenance(item.get("provenance")),
         ))
     return result
 
@@ -160,9 +163,9 @@ def extract(docs: list[ParsedDocument], files_bytes: list[bytes]) -> ExtractionR
     cached = cache.get(source_hash)
     if cached:
         logger.info("cache_hit request_id=%s source_hash=%s", request_id, source_hash)
-        result = ExtractionResult(**cached)
-        result.request_id = request_id
-        result.cache_hit = True
+        result = ExtractionResult(**cached).model_copy(
+            update={"request_id": request_id, "cache_hit": True}
+        )
         record(cache_hit=True, tokens=0, latency_ms=0, errors=[])
         return result
 
@@ -178,11 +181,11 @@ def extract(docs: list[ParsedDocument], files_bytes: list[bytes]) -> ExtractionR
         raw = extract_json_from_response(llm_resp.content)
     except TimeoutError as e:
         llm_errors.append(f"timeout: {e}")
-        logger.error("LLM timeout request_id=%s: %s", request_id, e)
+        logger.error("LLM timeout request_id=%s: %s", request_id, type(e).__name__)
         llm_resp = None  # type: ignore
     except Exception as e:
         llm_errors.append(f"provider_error: {e}")
-        logger.error("LLM error request_id=%s: %s", request_id, e)
+        logger.error("LLM error request_id=%s: %s", request_id, type(e).__name__)
         llm_resp = None  # type: ignore
 
     latency_ms = (time.perf_counter() - t0) * 1000
@@ -205,17 +208,25 @@ def extract(docs: list[ParsedDocument], files_bytes: list[bytes]) -> ExtractionR
     result = ExtractionResult(
         request_id=request_id,
         cache_hit=False,
-        broker_name=_build_field(raw.get("broker_name"), "broker_name"),
-        broker_email=_build_field(raw.get("broker_email"), "broker_email"),
-        brokerage=_build_field(raw.get("brokerage"), "brokerage"),
-        complete_brokerage_address=_build_field(raw.get("complete_brokerage_address"), "complete_brokerage_address"),
+        broker_name=_build_field(raw.get("broker_name")),
+        broker_email=_build_field(raw.get("broker_email")),
+        brokerage=_build_field(raw.get("brokerage")),
+        complete_brokerage_address=_build_field(raw.get("complete_brokerage_address")),
         property_addresses=_build_addresses(raw.get("property_addresses")),
         latency_ms=round(latency_ms, 2),
         token_usage=token_usage,
         errors=all_errors,
     )
 
-    record(cache_hit=False, tokens=token_usage.total_tokens if token_usage else 0, latency_ms=latency_ms, errors=all_errors)
+    record(
+        cache_hit=False,
+        tokens=token_usage.total_tokens if token_usage else 0,
+        prompt_tokens=token_usage.prompt_tokens if token_usage else 0,
+        completion_tokens=token_usage.completion_tokens if token_usage else 0,
+        cost_usd=token_usage.estimated_cost_usd if token_usage else 0.0,
+        latency_ms=latency_ms,
+        errors=all_errors,
+    )
     logger.info(
         "extracted request_id=%s source_hash=%s latency_ms=%.1f tokens=%s errors=%d",
         request_id, source_hash, latency_ms,

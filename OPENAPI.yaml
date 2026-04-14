@@ -33,8 +33,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtractionResult"
+              example:
+                request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                cache_hit: false
+                broker_name:
+                  value: "Emily Gooding"
+                  confidence: 0.97
+                  provenance:
+                    doc_name: "Resiquant Mail - FW_ Town Squire.pdf"
+                    page: 1
+                    snippet: "Emily Gooding | Associate Broker, Property"
+                broker_email:
+                  value: "egooding@brcins.com"
+                  confidence: 0.99
+                  provenance:
+                    doc_name: "Resiquant Mail - FW_ Town Squire.pdf"
+                    page: 1
+                    snippet: "egooding@brcins.com"
+                brokerage:
+                  value: "Brown & Riding"
+                  confidence: 0.97
+                  provenance:
+                    doc_name: "Resiquant Mail - FW_ Town Squire.pdf"
+                    page: 1
+                    snippet: "Brown & Riding | 600 University Street"
+                complete_brokerage_address:
+                  value: "600 University Street, Suite 3000, Seattle, WA 98101"
+                  confidence: 0.95
+                  provenance:
+                    doc_name: "Resiquant Mail - FW_ Town Squire.pdf"
+                    page: 1
+                    snippet: "600 University Street, Suite 3000, Seattle, WA 98101"
+                property_addresses:
+                  - address: "7924 212th St SW, Edmonds, WA 98026"
+                    confidence: 0.95
+                    provenance:
+                      doc_name: "24-25 DIC SOV.xlsx"
+                      page: null
+                      snippet: "7924 212th St SW  Edmonds  WA  98026"
+                latency_ms: 4823.4
+                token_usage:
+                  prompt_tokens: 14200
+                  completion_tokens: 480
+                  total_tokens: 14680
+                  estimated_cost_usd: 0.0499
+                errors: []
         "400":
           description: No files uploaded or all files empty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "No files uploaded."
         "500":
           description: Internal server error
 
@@ -73,6 +127,10 @@ paths:
   /metrics:
     get:
       summary: Cost & latency metrics
+      description: |
+        Returns aggregate token usage, cost, latency, cache, and error stats.
+        - API clients receive JSON.
+        - Browsers (Accept: text/html) receive an HTML dashboard.
       operationId: getMetrics
       responses:
         "200":
@@ -81,6 +139,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetricsResponse"
+              example:
+                total_requests: 42
+                cache_hits: 18
+                cache_misses: 24
+                cache_hit_rate: 0.4286
+                total_tokens_used: 187400
+                total_prompt_tokens: 183200
+                total_completion_tokens: 4200
+                total_cost_usd: 1.612800
+                avg_cost_per_request_usd: 0.067200
+                total_latency_ms: 198420.5
+                avg_latency_ms: 4724.3
+                errors_by_type:
+                  validation_error: 2
+                error_rate: 0.0476
 
   /health:
     get:
@@ -203,17 +276,40 @@ components:
       properties:
         total_requests:
           type: integer
+          description: Total extraction requests received (cache hits + misses)
         cache_hits:
           type: integer
         cache_misses:
           type: integer
+        cache_hit_rate:
+          type: number
+          format: float
+          description: Fraction of requests served from cache (0.0–1.0)
         total_tokens_used:
           type: integer
+        total_prompt_tokens:
+          type: integer
+        total_completion_tokens:
+          type: integer
+        total_cost_usd:
+          type: number
+          format: float
+          description: Estimated cumulative LLM cost in USD (Perplexity sonar-pro pricing)
+        avg_cost_per_request_usd:
+          type: number
+          format: float
+          description: Average cost per LLM call (cache hits excluded)
         total_latency_ms:
           type: number
         avg_latency_ms:
           type: number
+          description: Rolling average end-to-end latency in milliseconds
         errors_by_type:
           type: object
           additionalProperties:
             type: integer
+          description: Error counts keyed by taxonomy (validation_error, provider_error, timeout)
+        error_rate:
+          type: number
+          format: float
+          description: Fraction of requests that had at least one error

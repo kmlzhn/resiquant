@@ -5,7 +5,11 @@ import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
-warnings.filterwarnings("ignore")
+# Suppress known noisy warnings from parsing libraries only.
+warnings.filterwarnings("ignore", category=UserWarning, module=r"pdfplumber")
+warnings.filterwarnings("ignore", category=UserWarning, module=r"pdfminer")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"openpyxl")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"xlrd")
 
 
 @dataclass
