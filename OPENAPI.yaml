@@ -155,6 +155,55 @@ paths:
                   validation_error: 2
                 error_rate: 0.0476
 
+  /validate-field:
+    post:
+      summary: Validate a manually corrected field value
+      description: |
+        Run field-level validation on a value the user has edited in the UI.
+        Returns whether the value is valid and any validation errors.
+        Supported fields: broker_email, complete_brokerage_address.
+        All other fields always return valid=true.
+      operationId: validateField
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field, value]
+              properties:
+                field:
+                  type: string
+                  description: Field name being corrected
+                  example: broker_email
+                value:
+                  type: string
+                  description: New value to validate
+                  example: broker@example.com
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  value:
+                    type: string
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+              example:
+                field: broker_email
+                value: not-an-email
+                valid: false
+                errors: ["broker_email 'not-an-email' is not a valid email format"]
+
   /health:
     get:
       summary: Health check
